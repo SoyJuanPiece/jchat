@@ -11,14 +11,13 @@ import io.github.jan.supabase.postgrest.query.filter.FilterOperator
 import io.github.jan.supabase.realtime.PostgresAction
 import io.github.jan.supabase.realtime.RealtimeChannel
 import io.github.jan.supabase.realtime.channel
-import io.github.jan.supabase.realtime.decode
 import io.github.jan.supabase.realtime.postgresChangeFlow
 import io.github.jan.supabase.realtime.realtime
+import io.github.jan.supabase.serializer.supabaseJson
 import io.github.jan.supabase.storage.storage
 import io.github.jan.supabase.storage.upload
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
-import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -109,11 +108,10 @@ class RemoteDataSource(private val supabase: SupabaseClient) {
         channel.postgresChangeFlow<PostgresAction.Insert>(schema = "public") {
             table = "messages"
             filter("chat_id", FilterOperator.EQ, chatId)
+        }.collect { action ->
+            val dto = supabase.serializer.supabaseJson.decodeFromJsonElement(MessageDto.serializer(), action.record)
+            emit(dto)
         }
-            .decode<MessageDto>()
-            .collect { dto ->
-                emit(dto)
-            }
     }
 
     suspend fun unsubscribeFromMessages(chatId: String) {
