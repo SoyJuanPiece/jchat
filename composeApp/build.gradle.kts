@@ -46,7 +46,6 @@ kotlin {
             implementation(compose.ui)
             implementation(compose.components.resources)
             implementation(libs.compose.navigation)
-            implementation(libs.compose.ui.tooling.preview)
 
             // Coroutines
             implementation(libs.kotlinx.coroutines.core)
