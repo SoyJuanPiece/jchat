@@ -13,11 +13,15 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -45,6 +49,7 @@ import org.koin.compose.viewmodel.koinViewModel
 @Composable
 fun ChatListScreen(
     onNavigateToConversation: (chatId: String) -> Unit,
+    onNavigateToProfile: () -> Unit,
     viewModel: ChatListViewModel = koinViewModel(),
 ) {
     val state by viewModel.state.collectAsState()
@@ -71,7 +76,14 @@ fun ChatListScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(title = { Text("JChat") })
+            TopAppBar(
+                title = { Text("JChat") },
+                actions = {
+                    IconButton(onClick = onNavigateToProfile) {
+                        Icon(Icons.Default.AccountCircle, contentDescription = "Profile")
+                    }
+                }
+            )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { paddingValues ->

@@ -17,6 +17,7 @@ import kotlinx.coroutines.IO
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.take
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.datetime.Clock
@@ -53,6 +54,16 @@ class ChatRepositoryImpl(
     override suspend fun getProfile(userId: String): Profile? = withContext(Dispatchers.IO) {
         local.getProfileById(userId)
             ?: remote.fetchProfile(userId)?.toDomain()?.also { local.upsertProfile(it) }
+    }
+
+    override suspend fun updateProfile(displayName: String, avatarUrl: String?) = withContext(Dispatchers.IO) {
+        val currentProfile = getCurrentProfile() ?: return@withContext
+        val updatedProfile = currentProfile.copy(
+            displayName = displayName,
+            avatarUrl = avatarUrl ?: currentProfile.avatarUrl,
+        )
+        local.upsertProfile(updatedProfile)
+        // In a real app, we would also push this to Supabase.
     }
 
     // ─── Chats ────────────────────────────────────────────────────────────────
@@ -107,6 +118,33 @@ class ChatRepositoryImpl(
                 status = MessageStatus.SENT,
                 updatedAt = Clock.System.now().toEpochMilliseconds(),
             )
+
+            // Simular respuesta del otro usuario (Bot)
+            kotlinx.coroutines.delay(2000L)
+            simulateIncomingMessage(chatId, "¡Hola! Soy un bot. Recibí tu mensaje: \"$content\"")
+        }
+    }
+
+    private suspend fun simulateIncomingMessage(chatId: String, content: String) {
+        val chat = local.observeChats().take(1).collect { chats ->
+            val targetChat = chats.find { it.id == chatId }
+            if (targetChat != null) {
+                val now = Clock.System.now()
+                val incomingMessage = Message(
+                    id = uuid4().toString(),
+                    chatId = chatId,
+                    senderId = targetChat.participant.id, // Responder como el otro participante
+                    content = content,
+                    contentType = ContentType.TEXT,
+                    status = MessageStatus.SENT,
+                    createdAt = now,
+                    updatedAt = now,
+                )
+                withContext(Dispatchers.IO) {
+                    local.insertMessage(incomingMessage)
+                    local.updateChatLastMessage(chatId, content, now.toEpochMilliseconds())
+                }
+            }
         }
     }
 

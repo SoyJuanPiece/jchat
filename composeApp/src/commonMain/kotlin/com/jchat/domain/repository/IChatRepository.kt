@@ -23,6 +23,9 @@ interface IChatRepository {
     /** Fetches a profile by [userId] (local cache first, then remote). */
     suspend fun getProfile(userId: String): Profile?
 
+    /** Updates the current user's profile locally and remotely. */
+    suspend fun updateProfile(displayName: String, avatarUrl: String?)
+
     // ─── Chats ────────────────────────────────────────────────────────────────
 
     /**

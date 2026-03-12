@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -23,9 +24,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
-//import androidx.compose.material.icons.filled.AttachFile
-//import androidx.compose.material.icons.filled.DoneAll
-//import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.AttachFile
+import androidx.compose.material.icons.filled.DoneAll
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -70,17 +71,19 @@ fun ConversationScreen(
     viewModel: ConversationViewModel = koinViewModel(parameters = { parametersOf(chatId) }),
 ) {
     val state by viewModel.state.collectAsState()
-    val event by viewModel.events.collectAsState()
     val listState = rememberLazyListState()
     val snackbarHostState = remember { SnackbarHostState() }
 
     // Scroll to the bottom on new messages
-    LaunchedEffect(event) {
-        if (event is ConversationEvent.ScrollToBottom) {
-            if (state.messages.isNotEmpty()) {
-                listState.animateScrollToItem(state.messages.lastIndex)
+    LaunchedEffect(viewModel.events) {
+        viewModel.events.collect { event ->
+            when (event) {
+                is ConversationEvent.ScrollToBottom -> {
+                    if (state.messages.isNotEmpty()) {
+                        listState.animateScrollToItem(state.messages.lastIndex)
+                    }
+                }
             }
-            viewModel.consumeEvent()
         }
     }
 
@@ -95,7 +98,16 @@ fun ConversationScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Chat") },
+                title = {
+                    Column {
+                        Text(state.participantName.ifBlank { "Chat" })
+                        Text(
+                            text = if (state.isTyping) "typing..." else state.participantStatus,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = if (state.isTyping) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -117,7 +129,7 @@ fun ConversationScreen(
                     isSending = state.isSending,
                     onTextChange = { viewModel.onIntent(ConversationIntent.UpdateInput(it)) },
                     onSendClick = { viewModel.onIntent(ConversationIntent.SendTextMessage) },
-                    onAttachClick = { /* Open file picker – platform-specific */ },
+                    onAttachClick = { viewModel.onIntent(ConversationIntent.SendMockImage) },
                 )
             }
         },
@@ -177,31 +189,41 @@ private fun MessageBubble(
 ) {
     val alignment = if (isFromCurrentUser) Alignment.CenterEnd else Alignment.CenterStart
     val bubbleColor = if (isFromCurrentUser) {
-        MaterialTheme.colorScheme.primaryContainer
+        MaterialTheme.colorScheme.primary
     } else {
-        MaterialTheme.colorScheme.surfaceVariant
+        MaterialTheme.colorScheme.secondaryContainer
+    }
+    val contentColor = if (isFromCurrentUser) {
+        MaterialTheme.colorScheme.onPrimary
+    } else {
+        MaterialTheme.colorScheme.onSecondaryContainer
     }
     val shape = if (isFromCurrentUser) {
-        RoundedCornerShape(16.dp, 4.dp, 16.dp, 16.dp)
+        RoundedCornerShape(16.dp, 16.dp, 2.dp, 16.dp)
     } else {
-        RoundedCornerShape(4.dp, 16.dp, 16.dp, 16.dp)
+        RoundedCornerShape(16.dp, 16.dp, 16.dp, 2.dp)
     }
 
     Box(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 2.dp),
         contentAlignment = alignment,
     ) {
         Surface(
             shape = shape,
             color = bubbleColor,
-            modifier = Modifier.widthIn(max = 280.dp),
+            contentColor = contentColor,
+            tonalElevation = 1.dp,
+            modifier = Modifier.widthIn(max = 300.dp),
         ) {
-            Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
+            Column(modifier = Modifier.padding(8.dp)) {
                 when (message.contentType) {
                     ContentType.TEXT -> {
                         Text(
                             text = message.content ?: "",
-                            style = MaterialTheme.typography.bodyMedium,
+                            style = MaterialTheme.typography.bodyLarge,
+                            modifier = Modifier.padding(horizontal = 4.dp),
                         )
                     }
 
@@ -211,17 +233,18 @@ private fun MessageBubble(
                             model = imageModel,
                             contentDescription = "Image message",
                             modifier = Modifier
-                                .heightIn(max = 200.dp)
-                                .clip(RoundedCornerShape(8.dp)),
+                                .fillMaxWidth()
+                                .heightIn(max = 300.dp)
+                                .clip(RoundedCornerShape(12.dp)),
                         )
                     }
 
                     ContentType.AUDIO -> {
-                        // Audio player widget – placeholder
-                        Text(
-                            text = "🎵 Audio message",
-                            style = MaterialTheme.typography.bodyMedium,
-                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.Schedule, contentDescription = null, modifier = Modifier.size(20.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text("Audio message", style = MaterialTheme.typography.bodyMedium)
+                        }
                     }
 
                     else -> {
@@ -232,16 +255,17 @@ private fun MessageBubble(
                     }
                 }
 
-                // Timestamp + status row
                 Row(
                     horizontalArrangement = Arrangement.End,
                     verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.align(Alignment.End),
+                    modifier = Modifier
+                        .align(Alignment.End)
+                        .padding(top = 4.dp),
                 ) {
                     Text(
                         text = formatTime(message.createdAt),
                         style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = contentColor.copy(alpha = 0.7f),
                     )
                     if (isFromCurrentUser) {
                         Spacer(modifier = Modifier.size(4.dp))
@@ -257,30 +281,30 @@ private fun MessageBubble(
 private fun MessageStatusIcon(status: MessageStatus) {
     when (status) {
         MessageStatus.SENDING -> {
-            /*Icon(
-            imageVector = Icons.Default.Schedule,
-            contentDescription = "Sending",
-            modifier = Modifier.size(14.dp),
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-        )*/
+            Icon(
+                imageVector = Icons.Default.Schedule,
+                contentDescription = "Sending",
+                modifier = Modifier.size(14.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+            )
         }
 
         MessageStatus.SENT, MessageStatus.DELIVERED -> {
-            /*Icon(
-            imageVector = Icons.Default.DoneAll,
-            contentDescription = "Delivered",
-            modifier = Modifier.size(14.dp),
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-        )*/
+            Icon(
+                imageVector = Icons.Default.DoneAll,
+                contentDescription = "Delivered",
+                modifier = Modifier.size(14.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+            )
         }
 
         MessageStatus.READ -> {
-            /*Icon(
-            imageVector = Icons.Default.DoneAll,
-            contentDescription = "Read",
-            modifier = Modifier.size(14.dp),
-            tint = MaterialTheme.colorScheme.primary,
-        )*/
+            Icon(
+                imageVector = Icons.Default.DoneAll,
+                contentDescription = "Read",
+                modifier = Modifier.size(14.dp),
+                tint = MaterialTheme.colorScheme.primary,
+            )
         }
 
         MessageStatus.FAILED -> Text(
@@ -315,7 +339,7 @@ private fun MessageInputBar(
             verticalAlignment = Alignment.Bottom,
         ) {
             IconButton(onClick = onAttachClick) {
-                //Icon(Icons.Default.AttachFile, contentDescription = "Attach file")
+                Icon(Icons.Default.AttachFile, contentDescription = "Attach file")
             }
 
             TextField(

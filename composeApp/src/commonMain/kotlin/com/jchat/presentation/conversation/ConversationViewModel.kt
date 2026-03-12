@@ -5,8 +5,11 @@ import androidx.lifecycle.viewModelScope
 import com.jchat.domain.model.ContentType
 import com.jchat.domain.model.Message
 import com.jchat.domain.repository.IChatRepository
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -16,9 +19,12 @@ import kotlinx.coroutines.launch
 /** All UI state for a single conversation screen. */
 data class ConversationState(
     val messages: List<Message> = emptyList(),
+    val participantName: String = "",
+    val participantStatus: String = "Offline",
     val inputText: String = "",
     val isLoading: Boolean = true,
     val isSending: Boolean = false,
+    val isTyping: Boolean = false,
     val uploadProgress: Float? = null,
     val errorMessage: String? = null,
 )
@@ -30,6 +36,9 @@ sealed interface ConversationIntent {
 
     /** User tapped "Send" with a text message. */
     data object SendTextMessage : ConversationIntent
+
+    /** User tapped to send a mock image for testing. */
+    data object SendMockImage : ConversationIntent
 
     /** User selected a media file to send. */
     data class SendMediaMessage(
@@ -60,10 +69,11 @@ class ConversationViewModel(
     private val _state = MutableStateFlow(ConversationState())
     val state: StateFlow<ConversationState> = _state
 
-    private val _events = MutableStateFlow<ConversationEvent?>(null)
-    val events: StateFlow<ConversationEvent?> = _events
+    private val _events = MutableSharedFlow<ConversationEvent>()
+    val events: SharedFlow<ConversationEvent> = _events.asSharedFlow()
 
     init {
+        loadParticipant()
         observeMessages()
         viewModelScope.launch {
             repository.markChatAsRead(chatId)
@@ -78,17 +88,33 @@ class ConversationViewModel(
         when (intent) {
             is ConversationIntent.UpdateInput -> _state.update { it.copy(inputText = intent.text) }
             ConversationIntent.SendTextMessage -> sendText()
+            ConversationIntent.SendMockImage -> sendMockImage()
             is ConversationIntent.SendMediaMessage -> sendMedia(intent.localPath, intent.contentType)
             is ConversationIntent.DeleteMessage -> deleteMessage(intent.messageId)
             ConversationIntent.DismissError -> _state.update { it.copy(errorMessage = null) }
         }
     }
 
-    fun consumeEvent() {
-        _events.value = null
+    // ─── Private Helpers ──────────────────────────────────────────────────────
+
+    private fun sendMockImage() {
+        // Simular el envío de una imagen para pruebas de UI
+        sendMedia("mock_image.jpg", ContentType.IMAGE)
     }
 
-    // ─── Private Helpers ──────────────────────────────────────────────────────
+    private fun loadParticipant() {
+        viewModelScope.launch {
+            repository.observeChats().collect { chatList ->
+                val chat = chatList.find { it.id == chatId }
+                chat?.let {
+                    _state.update { s -> s.copy(
+                        participantName = it.participant.displayName,
+                        participantStatus = if (it.participant.status == com.jchat.domain.model.OnlineStatus.ONLINE) "Online" else "Offline"
+                    ) }
+                }
+            }
+        }
+    }
 
     private fun observeMessages() {
         viewModelScope.launch {
@@ -96,7 +122,7 @@ class ConversationViewModel(
                 .catch { e -> _state.update { it.copy(isLoading = false, errorMessage = e.message) } }
                 .collect { messages ->
                     _state.update { it.copy(messages = messages, isLoading = false) }
-                    _events.value = ConversationEvent.ScrollToBottom
+                    _events.emit(ConversationEvent.ScrollToBottom)
                 }
         }
     }
@@ -114,6 +140,13 @@ class ConversationViewModel(
                 }
                 .onSuccess {
                     _state.update { it.copy(isSending = false) }
+                    // Simular que el otro está escribiendo
+                    kotlinx.coroutines.launch {
+                        kotlinx.coroutines.delay(1500L)
+                        _state.update { it.copy(isTyping = true) }
+                        kotlinx.coroutines.delay(2000L)
+                        _state.update { it.copy(isTyping = false) }
+                    }
                 }
         }
     }

@@ -10,6 +10,7 @@ import com.jchat.data.repository.ChatRepositoryImpl
 import com.jchat.domain.repository.IChatRepository
 import com.jchat.presentation.chatlist.ChatListViewModel
 import com.jchat.presentation.conversation.ConversationViewModel
+import com.jchat.presentation.profile.ProfileViewModel
 import org.koin.core.module.dsl.factoryOf
 import org.koin.core.module.dsl.singleOf
 import org.koin.dsl.bind
@@ -46,6 +47,7 @@ val dataModule = module {
 
 val presentationModule = module {
     factoryOf(::ChatListViewModel)
+    factoryOf(::ProfileViewModel)
     factory { (chatId: String) -> ConversationViewModel(chatId, get()) }
 }
 

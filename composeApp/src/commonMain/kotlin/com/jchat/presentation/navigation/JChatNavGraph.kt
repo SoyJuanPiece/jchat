@@ -8,9 +8,11 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.jchat.presentation.chatlist.ChatListScreen
 import com.jchat.presentation.conversation.ConversationScreen
+import com.jchat.presentation.profile.ProfileScreen
 
 private const val ROUTE_CHAT_LIST = "chat_list"
 private const val ROUTE_CONVERSATION = "conversation/{chatId}"
+private const val ROUTE_PROFILE = "profile"
 private const val ARG_CHAT_ID = "chatId"
 
 /**
@@ -22,20 +24,29 @@ private const val ARG_CHAT_ID = "chatId"
 @Composable
 fun JChatNavGraph(currentUserId: String) {
     val navController = rememberNavController()
+NavHost(
+    navController = navController,
+    startDestination = ROUTE_CHAT_LIST,
+) {
+    composable(ROUTE_CHAT_LIST) {
+        ChatListScreen(
+            onNavigateToConversation = { chatId ->
+                navController.navigate("conversation/$chatId")
+            },
+            onNavigateToProfile = {
+                navController.navigate(ROUTE_PROFILE)
+            }
+        )
+    }
 
-    NavHost(
-        navController = navController,
-        startDestination = ROUTE_CHAT_LIST,
-    ) {
-        composable(ROUTE_CHAT_LIST) {
-            ChatListScreen(
-                onNavigateToConversation = { chatId ->
-                    navController.navigate("conversation/$chatId")
-                },
-            )
-        }
+    composable(ROUTE_PROFILE) {
+        ProfileScreen(
+            onNavigateBack = { navController.popBackStack() }
+        )
+    }
 
-        composable(
+    composable(
+...
             route = ROUTE_CONVERSATION,
             arguments = listOf(
                 navArgument(ARG_CHAT_ID) { type = NavType.StringType },
