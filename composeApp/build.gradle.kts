@@ -101,18 +101,9 @@ android {
         versionCode = 1
         versionName = "1.0.0"
     }
-    signingConfigs {
-        getByName("debug") {
-            storeFile = file("key.jks")
-            storePassword = System.getenv("STORE_PASSWORD")
-            keyAlias = System.getenv("KEY_ALIAS")
-            keyPassword = System.getenv("KEY_PASSWORD")
-        }
-    }
     buildTypes {
         release {
             isMinifyEnabled = false
-            signingConfig = signingConfigs.getByName("debug")
         }
     }
     compileOptions {
