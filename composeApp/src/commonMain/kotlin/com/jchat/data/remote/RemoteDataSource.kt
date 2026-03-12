@@ -7,13 +7,13 @@ import com.jchat.domain.model.Profile
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.postgrest.from
+import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.postgrest.query.filter.FilterOperator
 import io.github.jan.supabase.realtime.PostgresAction
 import io.github.jan.supabase.realtime.RealtimeChannel
 import io.github.jan.supabase.realtime.channel
 import io.github.jan.supabase.realtime.postgresChangeFlow
 import io.github.jan.supabase.realtime.realtime
-import io.github.jan.supabase.serializer.supabaseJson
 import io.github.jan.supabase.storage.storage
 import io.github.jan.supabase.storage.upload
 import kotlinx.coroutines.flow.Flow
@@ -109,7 +109,7 @@ class RemoteDataSource(private val supabase: SupabaseClient) {
             table = "messages"
             filter("chat_id", FilterOperator.EQ, chatId)
         }.collect { action ->
-            val dto = supabase.serializer.supabaseJson.decodeFromJsonElement(MessageDto.serializer(), action.record)
+            val dto = supabase.postgrest.serializer.decodeFromJsonElement(MessageDto.serializer(), action.record)
             emit(dto)
         }
     }
