@@ -79,7 +79,7 @@ kotlin {
         nativeMain.dependencies {
             implementation(libs.sqldelight.native.driver)
         }
-
+        
         appleMain.dependencies {
             implementation(libs.ktor.client.darwin)
         }
