@@ -11,6 +11,7 @@ import io.github.jan.supabase.postgrest.query.filter.FilterOperator
 import io.github.jan.supabase.realtime.PostgresAction
 import io.github.jan.supabase.realtime.RealtimeChannel
 import io.github.jan.supabase.realtime.channel
+import io.github.jan.supabase.realtime.decode
 import io.github.jan.supabase.realtime.postgresChangeFlow
 import io.github.jan.supabase.realtime.realtime
 import io.github.jan.supabase.storage.storage
@@ -108,10 +109,11 @@ class RemoteDataSource(private val supabase: SupabaseClient) {
         channel.postgresChangeFlow<PostgresAction.Insert>(schema = "public") {
             table = "messages"
             filter("chat_id", FilterOperator.EQ, chatId)
-        }.collect { action ->
-            val dto = action.decode<MessageDto>()
-            emit(dto)
         }
+            .decode<MessageDto>()
+            .collect { dto ->
+                emit(dto)
+            }
     }
 
     suspend fun unsubscribeFromMessages(chatId: String) {
