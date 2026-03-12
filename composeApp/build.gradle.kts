@@ -81,6 +81,7 @@ kotlin {
 
         nativeMain.dependencies {
             implementation(libs.sqldelight.native.driver)
+            implementation(libs.ktor.client.darwin)
         }
     }
 }
