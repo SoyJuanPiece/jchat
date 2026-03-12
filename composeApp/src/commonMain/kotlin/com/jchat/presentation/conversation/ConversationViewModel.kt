@@ -141,7 +141,7 @@ class ConversationViewModel(
                 .onSuccess {
                     _state.update { it.copy(isSending = false) }
                     // Simular que el otro está escribiendo
-                    kotlinx.coroutines.launch {
+                    launch {
                         kotlinx.coroutines.delay(1500L)
                         _state.update { it.copy(isTyping = true) }
                         kotlinx.coroutines.delay(2000L)

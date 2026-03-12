@@ -42,6 +42,9 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.jchat.domain.model.Chat
 import com.jchat.domain.model.OnlineStatus
+import com.jchat.presentation.chatlist.ChatListViewModel
+import com.jchat.presentation.chatlist.ChatListIntent
+import com.jchat.presentation.chatlist.ChatListEvent
 import kotlinx.coroutines.flow.SharedFlow
 import org.koin.compose.viewmodel.koinViewModel
 
@@ -74,39 +77,22 @@ fun ChatListScreen(
         }
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("JChat") },
-                actions = {
-                    IconButton(onClick = onNavigateToProfile) {
-                        Icon(Icons.Default.AccountCircle, contentDescription = "Profile")
-                    }
-                }
-            )
-        },
-        snackbarHost = { SnackbarHost(snackbarHostState) },
-    ) { paddingValues ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues),
-        ) {
-            when {
-                state.isLoading && state.chats.isEmpty() -> {
-                    CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-                }
+    Box(modifier = Modifier.fillMaxSize()) {
+        when {
+            state.isLoading && state.chats.isEmpty() -> {
+                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+            }
 
-                else -> {
-                    ChatList(
-                        chats = state.chats,
-                        onChatClick = { chatId ->
-                            viewModel.onIntent(ChatListIntent.OpenChat(chatId))
-                        },
-                    )
-                }
+            else -> {
+                ChatList(
+                    chats = state.chats,
+                    onChatClick = { chatId ->
+                        viewModel.onIntent(ChatListIntent.OpenChat(chatId))
+                    },
+                )
             }
         }
+        SnackbarHost(hostState = snackbarHostState, modifier = Modifier.align(Alignment.BottomCenter))
     }
 }
 

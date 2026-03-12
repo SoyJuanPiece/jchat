@@ -6,47 +6,44 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import com.jchat.presentation.chatlist.ChatListScreen
 import com.jchat.presentation.conversation.ConversationScreen
 import com.jchat.presentation.profile.ProfileScreen
+import com.jchat.presentation.home.HomeScreen
 
-private const val ROUTE_CHAT_LIST = "chat_list"
+private const val ROUTE_HOME = "home"
 private const val ROUTE_CONVERSATION = "conversation/{chatId}"
 private const val ROUTE_PROFILE = "profile"
 private const val ARG_CHAT_ID = "chatId"
 
 /**
  * Top-level navigation graph for JChat.
- *
- * @param currentUserId The authenticated user's ID, required by [ConversationScreen]
- *                      to distinguish own messages from others.
  */
 @Composable
 fun JChatNavGraph(currentUserId: String) {
     val navController = rememberNavController()
-NavHost(
-    navController = navController,
-    startDestination = ROUTE_CHAT_LIST,
-) {
-    composable(ROUTE_CHAT_LIST) {
-        ChatListScreen(
-            onNavigateToConversation = { chatId ->
-                navController.navigate("conversation/$chatId")
-            },
-            onNavigateToProfile = {
-                navController.navigate(ROUTE_PROFILE)
-            }
-        )
-    }
 
-    composable(ROUTE_PROFILE) {
-        ProfileScreen(
-            onNavigateBack = { navController.popBackStack() }
-        )
-    }
+    NavHost(
+        navController = navController,
+        startDestination = ROUTE_HOME,
+    ) {
+        composable(ROUTE_HOME) {
+            HomeScreen(
+                onNavigateToConversation = { chatId ->
+                    navController.navigate("conversation/$chatId")
+                },
+                onNavigateToProfile = {
+                    navController.navigate(ROUTE_PROFILE)
+                }
+            )
+        }
 
-    composable(
-...
+        composable(ROUTE_PROFILE) {
+            ProfileScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(
             route = ROUTE_CONVERSATION,
             arguments = listOf(
                 navArgument(ARG_CHAT_ID) { type = NavType.StringType },
