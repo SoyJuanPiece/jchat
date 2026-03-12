@@ -1,3 +1,4 @@
+
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
@@ -56,72 +57,78 @@ kotlin {
             // Datetime
             implementation(libs.kotlinx.datetime)
 
-            // SQLDelight
-            implementation(libs.sqldelight.coroutines.extensions)
-            implementation(libs.sqldelight.primitive.adapters)
+            // Koin
+            implementation(libs.koin.core)
+
+            // Supabase
+            implementation(libs.supabase.realtime)
+            implementation(libs.supabase.postgrest)
+            implementation(libs.supabase.auth)
+            implementation(libs.supabase.storage)
 
             // Ktor
             implementation(libs.ktor.client.core)
             implementation(libs.ktor.client.content.negotiation)
             implementation(libs.ktor.serialization.kotlinx.json)
             implementation(libs.ktor.client.logging)
-            implementation(libs.ktor.client.websockets)
 
-            // Koin
-            implementation(libs.koin.core)
-            implementation(libs.koin.compose)
-            implementation(libs.koin.compose.viewmodel)
-
-            // Supabase
-            implementation(libs.supabase.postgrest)
-            implementation(libs.supabase.realtime)
-            implementation(libs.supabase.storage)
-            implementation(libs.supabase.auth)
-            implementation(libs.supabase.coil)
-
-            // Coil
-            implementation(libs.coil.compose)
-            implementation(libs.coil.network.ktor)
-
-            // UUID
-            implementation(libs.uuid)
+            // SQLDelight
+            implementation(libs.sqldelight.coroutines.extensions)
         }
 
-        iosMain.dependencies {
-            implementation(libs.ktor.client.darwin)
+        nativeMain.dependencies {
             implementation(libs.sqldelight.native.driver)
+        }
+
+        appleMain.dependencies {
+            implementation(libs.ktor.client.darwin)
         }
     }
 }
 
 android {
     namespace = "com.jchat"
-    compileSdk = libs.versions.androidCompileSdk.get().toInt()
+    compileSdk = libs.versions.android.compileSdk.get().toInt()
+
+    sourceSets["main"].manifest.srcFile("src/androidMain/AndroidManifest.xml")
+    sourceSets["main"].res.srcDirs("src/androidMain/res")
+    sourceSets["main"].resources.srcDirs("src/commonMain/resources")
 
     defaultConfig {
         applicationId = "com.jchat"
-        minSdk = libs.versions.androidMinSdk.get().toInt()
-        targetSdk = libs.versions.androidTargetSdk.get().toInt()
+        minSdk = libs.versions.android.minSdk.get().toInt()
+        targetSdk = libs.versions.android.targetSdk.get().toInt()
         versionCode = 1
         versionName = "1.0.0"
     }
-
-    packaging {
-        resources {
-            excludes += "/META-INF/{AL2.0,LGPL2.1}"
+    signingConfigs {
+        getByName("debug") {
+            storeFile = file("key.jks")
+            storePassword = System.getenv("STORE_PASSWORD")
+            keyAlias = System.getenv("KEY_ALIAS")
+            keyPassword = System.getenv("KEY_PASSWORD")
         }
     }
-
     buildTypes {
         release {
-            isMinifyEnabled = true
-            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"))
+            isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName("debug")
         }
     }
-
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
+    }
+    dependencies {
+        debugImplementation(libs.compose.ui.tooling)
+    }
+}
+
+compose.resources {
+    publicResClass = true
+    experimentalFitToScreen = true
+    configureResourceProcessing {
+        forUseAtConfigurationTime.set(false)
     }
 }
 
@@ -129,7 +136,6 @@ sqldelight {
     databases {
         create("JChatDatabase") {
             packageName.set("com.jchat.db")
-            schemaOutputDirectory.set(file("src/commonMain/sqldelight"))
         }
     }
 }
