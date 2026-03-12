@@ -21,6 +21,10 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.datetime.Instant
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
+
+// Private Json instance for manual decoding
+private val json = Json { ignoreUnknownKeys = true }
 
 // ─── Remote DTOs ─────────────────────────────────────────────────────────────
 
@@ -109,7 +113,8 @@ class RemoteDataSource(private val supabase: SupabaseClient) {
             table = "messages"
             filter("chat_id", FilterOperator.EQ, chatId)
         }.collect { action ->
-            val dto = supabase.postgrest.serializer.decodeFromJsonElement(MessageDto.serializer(), action.record)
+            val jsonString = action.record.toString()
+            val dto = json.decodeFromString(MessageDto.serializer(), jsonString)
             emit(dto)
         }
     }
