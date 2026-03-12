@@ -23,6 +23,22 @@ jobs:
         with:
           gradle-version: '8.9'
 
+      - name: Decode Keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.YOUR_KEYSTORE_BASE64 }} # You need to define this secret
+        run: |
+          echo "$KEYSTORE_BASE64" | base64 --decode > composeApp/key.jks
+
+      - name: Set Signing Environment Variables
+        env:
+          STORE_PASSWORD: ${{ secrets.YOUR_STORE_PASSWORD }} # You need to define this secret
+          KEY_ALIAS: ${{ secrets.YOUR_KEY_ALIAS }} # You need to define this secret
+          KEY_PASSWORD: ${{ secrets.YOUR_KEY_PASSWORD }} # You need to define this secret
+        run: |
+          echo "STORE_PASSWORD=$STORE_PASSWORD" >> $GITHUB_ENV
+          echo "KEY_ALIAS=$KEY_ALIAS" >> $GITHUB_ENV
+          echo "KEY_PASSWORD=$KEY_PASSWORD" >> $GITHUB_ENV
+
       # Note: This builds an unsigned APK. For a production release, you would need to
       # configure signing in your build.gradle.kts file and store the keystore
       # and credentials securely in GitHub Secrets.
