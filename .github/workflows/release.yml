@@ -5,6 +5,9 @@ on:
     tags:
       - 'v*.*.*'
 
+permissions:
+  contents: write
+
 jobs:
   build-and-release:
     runs-on: macos-latest # macOS is required for building iOS artifacts
