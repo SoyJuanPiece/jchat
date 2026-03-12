@@ -1,0 +1,33 @@
+# Gradle
+.gradle/
+build/
+**/build/
+*.gradle.kts.bak
+
+# Android
+local.properties
+*.apk
+*.aab
+*.keystore
+
+# iOS / Xcode
+*.xcworkspace/xcuserdata/
+DerivedData/
+*.ipa
+
+# Kotlin
+*.class
+*.jar
+
+# IDE
+.idea/
+*.iml
+.DS_Store
+
+# SQLDelight generated sources (regenerated at build time)
+**/generated/sqldelight/
+
+# Secrets – never commit these
+secrets.properties
+google-services.json
+GoogleService-Info.plist
