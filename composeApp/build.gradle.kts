@@ -46,6 +46,7 @@ kotlin {
             implementation(compose.ui)
             implementation(compose.components.resources)
             implementation(libs.compose.navigation)
+            implementation(libs.compose.ui.tooling.preview)
 
             // Coroutines
             implementation(libs.kotlinx.coroutines.core)
@@ -83,7 +84,7 @@ kotlin {
 
 android {
     namespace = "com.jchat"
-    compileSdk = libs.versions.android.compileSdk.get().toInt()
+    compileSdk = libs.versions.androidCompileSdk.get().toInt()
 
     sourceSets["main"].manifest.srcFile("src/androidMain/AndroidManifest.xml")
     sourceSets["main"].res.srcDirs("src/androidMain/res")
@@ -91,8 +92,8 @@ android {
 
     defaultConfig {
         applicationId = "com.jchat"
-        minSdk = libs.versions.android.minSdk.get().toInt()
-        targetSdk = libs.versions.android.targetSdk.get().toInt()
+        minSdk = libs.versions.androidMinSdk.get().toInt()
+        targetSdk = libs.versions.androidTargetSdk.get().toInt()
         versionCode = 1
         versionName = "1.0.0"
     }
@@ -121,10 +122,6 @@ android {
 
 compose.resources {
     publicResClass = true
-    experimentalFitToScreen = true
-    configureResourceProcessing {
-        forUseAtConfigurationTime.set(false)
-    }
 }
 
 sqldelight {

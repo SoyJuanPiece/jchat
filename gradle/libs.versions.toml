@@ -5,6 +5,7 @@ kotlin = "2.1.0"
 
 # Compose Multiplatform
 composeMultiplatform = "1.7.3"
+compose = "1.7.3"
 composeNavigation = "2.8.0-alpha10"
 
 # Android
@@ -89,6 +90,8 @@ uuid = { module = "com.benasher44:uuid", version.ref = "uuid" }
 
 # Compose Navigation
 compose-navigation = { module = "org.jetbrains.androidx.navigation:navigation-compose", version.ref = "composeNavigation" }
+compose-ui-tooling = { module = "org.jetbrains.compose.ui:ui-tooling", version.ref = "compose" }
+compose-ui-tooling-preview = { module = "org.jetbrains.compose.ui:ui-tooling-preview", version.ref = "compose" }
 
 # Android
 androidx-activity-compose = { module = "androidx.activity:activity-compose", version = "1.9.3" }
