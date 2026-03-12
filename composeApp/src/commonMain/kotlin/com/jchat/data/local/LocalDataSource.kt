@@ -9,6 +9,7 @@ import com.jchat.domain.model.OnlineStatus
 import com.jchat.domain.model.Profile
 import app.cash.sqldelight.coroutines.asFlow
 import app.cash.sqldelight.coroutines.mapToList
+import com.jchat.db.Messages
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.flow.Flow
@@ -164,7 +165,7 @@ private fun com.jchat.db.GetAllChats.toChat(): Chat = Chat(
     createdAt = Instant.fromEpochMilliseconds(created_at),
 )
 
-private fun com.jchat.db.GetMessagesByChatId.toMessage(): Message = Message(
+private fun Messages.toMessage(): Message = Message(
     id = id,
     chatId = chat_id,
     senderId = sender_id,

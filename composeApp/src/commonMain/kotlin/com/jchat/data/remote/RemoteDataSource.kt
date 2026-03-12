@@ -7,6 +7,7 @@ import com.jchat.domain.model.Profile
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.postgrest.from
+import io.github.jan.supabase.postgrest.query.filter.FilterOperator
 import io.github.jan.supabase.realtime.PostgresAction
 import io.github.jan.supabase.realtime.RealtimeChannel
 import io.github.jan.supabase.realtime.channel
@@ -106,9 +107,9 @@ class RemoteDataSource(private val supabase: SupabaseClient) {
 
         channel.postgresChangeFlow<PostgresAction.Insert>(schema = "public") {
             table = "messages"
-            filter(column = "chat_id", operator = "eq", value = chatId)
+            filter("chat_id", FilterOperator.EQ, chatId)
         }.collect { action ->
-            val dto = action.decodeAs<MessageDto>()
+            val dto = action.decode<MessageDto>()
             emit(dto)
         }
     }
