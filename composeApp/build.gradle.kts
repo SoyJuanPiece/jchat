@@ -35,6 +35,7 @@ kotlin {
             implementation(compose.ui)
             implementation(compose.components.resources)
             implementation(libs.compose.navigation)
+            implementation(libs.compose.material.icons.extended)
 
             // Coroutines
             implementation(libs.kotlinx.coroutines.core)

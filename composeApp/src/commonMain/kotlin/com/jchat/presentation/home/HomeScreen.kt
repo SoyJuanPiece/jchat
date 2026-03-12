@@ -1,6 +1,10 @@
 package com.jchat.presentation.home
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Call
@@ -12,7 +16,10 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Update
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.unit.dp
 import com.jchat.presentation.calls.CallsScreen
 import com.jchat.presentation.chatlist.ChatListScreen
 import com.jchat.presentation.updates.UpdatesScreen
@@ -23,7 +30,7 @@ fun HomeScreen(
     onNavigateToConversation: (String) -> Unit,
     onNavigateToProfile: () -> Unit,
 ) {
-    var selectedTab by remember { mutableStateOf(0) }
+    var selectedTab by remember { mutableIntStateOf(0) }
     
     val tabs = listOf(
         HomeTab("Chats", Icons.Default.Chat),
@@ -74,7 +81,7 @@ fun HomeScreen(
             }
         }
     ) { paddingValues ->
-        Box(modifier = Modifier.padding(paddingValues)) {
+        Box(modifier = Modifier.padding(paddingValues).fillMaxSize()) {
             when (selectedTab) {
                 0 -> ChatListScreen(
                     onNavigateToConversation = onNavigateToConversation,
@@ -90,12 +97,12 @@ fun HomeScreen(
 
 @Composable
 fun CenterText(text: String) {
-    androidx.compose.foundation.layout.Box(
-        modifier = androidx.compose.ui.Modifier.fillMaxSize(),
-        contentAlignment = androidx.compose.ui.Alignment.Center
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
     ) {
         Text(text)
     }
 }
 
-data class HomeTab(val title: String, val icon: androidx.compose.ui.graphics.vector.ImageVector)
+data class HomeTab(val title: String, val icon: ImageVector)
