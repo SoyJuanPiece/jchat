@@ -21,7 +21,7 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v3
         with:
-          gradle-version: '8.7'
+          gradle-version: '8.9'
 
       # Note: This builds an unsigned APK. For a production release, you would need to
       # configure signing in your build.gradle.kts file and store the keystore
