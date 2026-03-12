@@ -1,0 +1,55 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  build-and-release:
+    runs-on: macos-latest # macOS is required for building iOS artifacts
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      # Note: This builds an unsigned APK. For a production release, you would need to
+      # configure signing in your build.gradle.kts file and store the keystore
+      # and credentials securely in GitHub Secrets.
+      - name: Build Android Release APK
+        run: ./gradlew :composeApp:assembleRelease
+
+      - name: Build iOS Frameworks (ARM64 & x64)
+        run: ./gradlew :composeApp:linkReleaseFrameworkIosArm64 :composeApp:linkReleaseFrameworkIosX64
+
+      # Create zip archives of the iOS frameworks to be uploaded as release artifacts
+      - name: Package iOS ARM64 Framework
+        run: |
+          cd composeApp/build/bin/iosArm64/releaseFramework
+          zip -r ../../../../ios_arm64_framework.zip .
+          cd -
+      - name: Package iOS x64 Framework
+        run: |
+          cd composeApp/build/bin/iosX64/releaseFramework
+          zip -r ../../../../ios_x64_framework.zip .
+          cd -
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          # This will create a draft release. Set to false to publish automatically.
+          draft: true
+          # The body of the release will be populated with the changelog from the tag.
+          generate_release_notes: true
+          files: |
+            composeApp/build/outputs/apk/release/*.apk
+            ios_arm64_framework.zip
+            ios_x64_framework.zip
