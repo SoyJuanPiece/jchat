@@ -18,15 +18,6 @@ kotlin {
         }
     }
 
-    listOf(
-        iosX64(),
-        iosArm64(),
-        iosSimulatorArm64()
-    ).forEach { iosTarget ->
-        iosTarget.binaries.framework {
-            baseName = "ComposeApp"
-            isStatic = true
-        }
     }
 
     sourceSets {
@@ -81,7 +72,6 @@ kotlin {
 
         nativeMain.dependencies {
             implementation(libs.sqldelight.native.driver)
-            implementation(libs.ktor.client.darwin)
         }
     }
 }
