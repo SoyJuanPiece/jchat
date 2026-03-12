@@ -50,6 +50,10 @@ kotlin {
 
             // Coroutines
             implementation(libs.kotlinx.coroutines.core)
+            implementation(libs.uuid)
+            implementation(libs.coil.compose)
+            implementation(libs.koin.compose.viewmodel)
+            implementation(libs.supabase.coil)
 
             // Serialization
             implementation(libs.kotlinx.serialization.json)
