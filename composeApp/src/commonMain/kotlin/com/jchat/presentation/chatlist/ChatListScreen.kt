@@ -1,5 +1,3 @@
-package com.jchat.presentation.chatlist
-
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -40,6 +38,7 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.jchat.domain.model.Chat
 import com.jchat.domain.model.OnlineStatus
+import kotlinx.coroutines.flow.SharedFlow
 import org.koin.compose.viewmodel.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -49,17 +48,16 @@ fun ChatListScreen(
     viewModel: ChatListViewModel = koinViewModel(),
 ) {
     val state by viewModel.state.collectAsState()
-    val event by viewModel.events.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
 
     // Consume navigation events
-    LaunchedEffect(event) {
-        when (val e = event) {
-            is ChatListEvent.NavigateToConversation -> {
-                onNavigateToConversation(e.chatId)
-                viewModel.consumeEvent()
+    LaunchedEffect(viewModel.events) {
+        viewModel.events.collect { event ->
+            when (event) {
+                is ChatListEvent.NavigateToConversation -> {
+                    onNavigateToConversation(event.chatId)
+                }
             }
-            null -> Unit
         }
     }
 

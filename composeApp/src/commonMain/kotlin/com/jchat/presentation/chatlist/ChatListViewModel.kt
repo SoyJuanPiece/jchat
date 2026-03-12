@@ -4,10 +4,15 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.jchat.domain.model.Chat
 import com.jchat.domain.repository.IChatRepository
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -47,8 +52,8 @@ class ChatListViewModel(
     private val _state = MutableStateFlow(ChatListState())
     val state: StateFlow<ChatListState> = _state
 
-    private val _events = MutableStateFlow<ChatListEvent?>(null)
-    val events: StateFlow<ChatListEvent?> = _events
+    private val _events = MutableSharedFlow<ChatListEvent>()
+    val events: SharedFlow<ChatListEvent> = _events.asSharedFlow()
 
     /** Single, cancellable job that collects the chats flow. */
     private var observeJob: kotlinx.coroutines.Job? = null
@@ -83,10 +88,8 @@ class ChatListViewModel(
     }
 
     private fun navigateToConversation(chatId: String) {
-        _events.value = ChatListEvent.NavigateToConversation(chatId)
-    }
-
-    fun consumeEvent() {
-        _events.value = null
+        viewModelScope.launch {
+            _events.emit(ChatListEvent.NavigateToConversation(chatId))
+        }
     }
 }

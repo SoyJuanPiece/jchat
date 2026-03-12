@@ -99,33 +99,14 @@ class ChatRepositoryImpl(
             local.updateChatLastMessage(chatId, content, now.toEpochMilliseconds())
         }
 
-        // 3. Background remote send
+        // 3. Background remote send (Simulado)
         scope.launch {
-            runCatching {
-                val dto = MessageDto(
-                    id = message.id,
-                    chatId = message.chatId,
-                    senderId = message.senderId,
-                    content = message.content,
-                    contentType = message.contentType.name.lowercase(),
-                    status = MessageStatus.SENT.name.lowercase(),
-                    createdAt = message.createdAt.toString(),
-                    updatedAt = message.updatedAt.toString(),
-                )
-                remote.sendMessage(dto)
-            }.onSuccess {
-                local.updateMessageStatus(
-                    messageId = message.id,
-                    status = MessageStatus.SENT,
-                    updatedAt = Clock.System.now().toEpochMilliseconds(),
-                )
-            }.onFailure {
-                local.updateMessageStatus(
-                    messageId = message.id,
-                    status = MessageStatus.FAILED,
-                    updatedAt = Clock.System.now().toEpochMilliseconds(),
-                )
-            }
+            kotlinx.coroutines.delay(1000L) // Simular el tiempo de red
+            local.updateMessageStatus(
+                messageId = message.id,
+                status = MessageStatus.SENT,
+                updatedAt = Clock.System.now().toEpochMilliseconds(),
+            )
         }
     }
 
@@ -164,90 +145,46 @@ class ChatRepositoryImpl(
         )
         withContext(Dispatchers.IO) { local.insertMessage(message) }
 
-        val fileBytes = readFileBytes(mediaLocalPath)
+        // Simular la carga de archivos
+        emit(0.0f)
+        kotlinx.coroutines.delay(500L)
+        emit(0.5f)
+        kotlinx.coroutines.delay(500L)
 
-        // Collect upload progress and forward it to the caller (90 % of total progress).
-        // The final 10 % is emitted after the Supabase message record is written.
-        remote.uploadMedia(
-            bucket = "chat-media",
-            remotePath = remotePath,
-            data = fileBytes,
-        ).collect { publicUrl ->
-            emit(0.9f)
+        val publicUrl = "https://via.placeholder.com/150/0000FF/FFFFFF?text=${contentType.name}" // URL de prueba
 
-            // Update local record with the remote URL
-            withContext(Dispatchers.IO) {
-                local.updateMessageMediaUrl(
-                    messageId = messageId,
-                    mediaUrl = publicUrl,
-                    status = MessageStatus.SENDING,
-                    updatedAt = Clock.System.now().toEpochMilliseconds(),
-                )
-            }
-
-            // Send message record to Supabase
-            runCatching {
-                val dto = MessageDto(
-                    id = messageId,
-                    chatId = chatId,
-                    senderId = currentUserId,
-                    contentType = contentType.name.lowercase(),
-                    mediaUrl = publicUrl,
-                    status = MessageStatus.SENT.name.lowercase(),
-                    createdAt = now.toString(),
-                    updatedAt = Clock.System.now().toString(),
-                )
-                remote.sendMessage(dto)
-            }.onSuccess {
-                withContext(Dispatchers.IO) {
-                    local.updateMessageStatus(
-                        messageId = messageId,
-                        status = MessageStatus.SENT,
-                        updatedAt = Clock.System.now().toEpochMilliseconds(),
-                    )
-                }
-            }.onFailure {
-                withContext(Dispatchers.IO) {
-                    local.updateMessageStatus(
-                        messageId = messageId,
-                        status = MessageStatus.FAILED,
-                        updatedAt = Clock.System.now().toEpochMilliseconds(),
-                    )
-                }
-            }
-            emit(1.0f)
+        // Update local record with the remote URL
+        withContext(Dispatchers.IO) {
+            local.updateMessageMediaUrl(
+                messageId = messageId,
+                mediaUrl = publicUrl,
+                status = MessageStatus.SENT,
+                updatedAt = Clock.System.now().toEpochMilliseconds(),
+            )
         }
+        emit(1.0f)
     }
 
     override suspend fun deleteMessage(messageId: String) = withContext(Dispatchers.IO) {
         local.softDeleteMessage(messageId, Clock.System.now().toEpochMilliseconds())
     }
 
-    // ─── Sync ─────────────────────────────────────────────────────────────────
+    // ─── Sync (Simulado) ─────────────────────────────────────────────────────────────────
 
-    override suspend fun syncMessages(chatId: String) = withContext(Dispatchers.IO) {
-        runCatching {
-            val remoteMessages = remote.fetchMessages(chatId)
-            remoteMessages.forEach { dto ->
-                // Use upsert so remote updates (e.g. read receipts) overwrite the local copy,
-                // while local optimistic inserts (status=SENDING) are not yet eligible here
-                // because they haven't been acknowledged by the server yet.
-                local.upsertMessage(dto.toDomain())
-            }
-        }
+    override suspend fun syncMessages(chatId: String) {
+        // No-op: No se sincroniza con el backend por ahora.
+        kotlinx.coroutines.delay(500L) // Simular un breve retraso
         Unit
     }
 
     override suspend fun subscribeToRealtimeMessages(chatId: String) {
-        scope.launch {
-            remote.subscribeToMessages(chatId).collect { dto ->
-                local.upsertMessage(dto.toDomain())
-            }
-        }
+        // No-op: No hay suscripción en tiempo real por ahora.
+        kotlinx.coroutines.delay(100L)
     }
 
     override suspend fun unsubscribeFromRealtimeMessages(chatId: String) {
-        remote.unsubscribeFromMessages(chatId)
+        // No-op: No hay desuscripción en tiempo real por ahora.
+        kotlinx.coroutines.delay(100L)
     }
 
     /**
