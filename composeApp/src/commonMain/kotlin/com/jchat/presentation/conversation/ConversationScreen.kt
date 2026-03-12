@@ -23,9 +23,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
-import androidx.compose.material.icons.filled.AttachFile
-import androidx.compose.material.icons.filled.DoneAll
-import androidx.compose.material.icons.filled.Schedule
+//import androidx.compose.material.icons.filled.AttachFile
+//import androidx.compose.material.icons.filled.DoneAll
+//import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -57,6 +57,9 @@ import com.jchat.domain.model.Message
 import com.jchat.domain.model.MessageStatus
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
+import kotlinx.datetime.Instant
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -253,26 +256,32 @@ private fun MessageBubble(
 @Composable
 private fun MessageStatusIcon(status: MessageStatus) {
     when (status) {
-        MessageStatus.SENDING -> Icon(
+        MessageStatus.SENDING -> {
+            /*Icon(
             imageVector = Icons.Default.Schedule,
             contentDescription = "Sending",
             modifier = Modifier.size(14.dp),
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+        )*/
+        }
 
-        MessageStatus.SENT, MessageStatus.DELIVERED -> Icon(
+        MessageStatus.SENT, MessageStatus.DELIVERED -> {
+            /*Icon(
             imageVector = Icons.Default.DoneAll,
             contentDescription = "Delivered",
             modifier = Modifier.size(14.dp),
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+        )*/
+        }
 
-        MessageStatus.READ -> Icon(
+        MessageStatus.READ -> {
+            /*Icon(
             imageVector = Icons.Default.DoneAll,
             contentDescription = "Read",
             modifier = Modifier.size(14.dp),
             tint = MaterialTheme.colorScheme.primary,
-        )
+        )*/
+        }
 
         MessageStatus.FAILED -> Text(
             text = "!",
@@ -306,7 +315,7 @@ private fun MessageInputBar(
             verticalAlignment = Alignment.Bottom,
         ) {
             IconButton(onClick = onAttachClick) {
-                Icon(Icons.Default.AttachFile, contentDescription = "Attach file")
+                //Icon(Icons.Default.AttachFile, contentDescription = "Attach file")
             }
 
             TextField(
@@ -353,8 +362,8 @@ private fun MessageInputBar(
 }
 
 /** Formats an [Instant] to a short "HH:MM" string in the device's local timezone. */
-private fun formatTime(instant: kotlinx.datetime.Instant): String {
-    val localDateTime = instant.toLocalDateTime(kotlinx.datetime.TimeZone.currentSystemDefault())
+private fun formatTime(instant: Instant): String {
+    val localDateTime = instant.toLocalDateTime(TimeZone.currentSystemDefault())
     val hours = localDateTime.hour.toString().padStart(2, '0')
     val minutes = localDateTime.minute.toString().padStart(2, '0')
     return "$hours:$minutes"

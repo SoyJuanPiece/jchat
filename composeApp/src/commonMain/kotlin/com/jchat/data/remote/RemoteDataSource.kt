@@ -106,9 +106,9 @@ class RemoteDataSource(private val supabase: SupabaseClient) {
 
         channel.postgresChangeFlow<PostgresAction.Insert>(schema = "public") {
             table = "messages"
-            filter = "chat_id=eq.$chatId"
+            filter(column = "chat_id", operator = "eq", value = chatId)
         }.collect { action ->
-            val dto = action.decodeRecord<MessageDto>()
+            val dto = action.decodeAs<MessageDto>()
             emit(dto)
         }
     }

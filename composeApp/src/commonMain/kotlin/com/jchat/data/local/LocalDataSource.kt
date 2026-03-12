@@ -138,7 +138,7 @@ class LocalDataSource(private val db: JChatDatabase) {
 
 // ─── Extension Mappers ───────────────────────────────────────────────────────
 
-private fun com.jchat.db.GetProfileById.toProfile(): Profile = Profile(
+private fun com.jchat.db.Profiles.toProfile(): Profile = Profile(
     id = id,
     username = username,
     displayName = display_name,
@@ -164,7 +164,7 @@ private fun com.jchat.db.GetAllChats.toChat(): Chat = Chat(
     createdAt = Instant.fromEpochMilliseconds(created_at),
 )
 
-private fun com.jchat.db.Messages.toMessage(): Message = Message(
+private fun com.jchat.db.GetMessagesByChatId.toMessage(): Message = Message(
     id = id,
     chatId = chat_id,
     senderId = sender_id,
