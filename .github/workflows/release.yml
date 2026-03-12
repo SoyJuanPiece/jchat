@@ -45,20 +45,20 @@ jobs:
       - name: Build Android Release APK
         run: gradle :composeApp:assembleRelease
 
-      - name: Build iOS Frameworks (ARM64 & x64)
-        run: gradle :composeApp:linkReleaseFrameworkIosArm64 :composeApp:linkReleaseFrameworkIosX64
+      # - name: Build iOS Frameworks (ARM64 & x64)
+      #   run: gradle :composeApp:linkReleaseFrameworkIosArm64 :composeApp:linkReleaseFrameworkIosX64
 
-      # Create zip archives of the iOS frameworks to be uploaded as release artifacts
-      - name: Package iOS ARM64 Framework
-        run: |
-          cd composeApp/build/bin/iosArm64/releaseFramework
-          zip -r ../../../../ios_arm64_framework.zip .
-          cd -
-      - name: Package iOS x64 Framework
-        run: |
-          cd composeApp/build/bin/iosX64/releaseFramework
-          zip -r ../../../../ios_x64_framework.zip .
-          cd -
+      # # Create zip archives of the iOS frameworks to be uploaded as release artifacts
+      # - name: Package iOS ARM64 Framework
+      #   run: |
+      #     cd composeApp/build/bin/iosArm64/releaseFramework
+      #     zip -r ../../../../ios_arm64_framework.zip .
+      #     cd -
+      # - name: Package iOS x64 Framework
+      #   run: |
+      #     cd composeApp/build/bin/iosX64/releaseFramework
+      #     zip -r ../../../../ios_x64_framework.zip .
+      #     cd -
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
@@ -69,5 +69,3 @@ jobs:
           generate_release_notes: true
           files: |
             composeApp/build/outputs/apk/release/*.apk
-            ios_arm64_framework.zip
-            ios_x64_framework.zip
