@@ -34,8 +34,8 @@ val dataModule = module {
     single {
         createSupabaseClient(
             SupabaseConfig(
-                supabaseUrl = getProperty("SUPABASE_URL", "https://your-project.supabase.co"),
-                supabaseAnonKey = getProperty("SUPABASE_ANON_KEY", "your-anon-key"),
+                supabaseUrl = getProperty("SUPABASE_URL", "https://ppincerggnnauznalbjd.supabase.co"),
+                supabaseAnonKey = getProperty("SUPABASE_ANON_KEY", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBwaW5jZXJnZ25uYXV6bmFsYmpkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMzNjA4MTIsImV4cCI6MjA4ODkzNjgxMn0.7BTZKcgjUprF-iI-wEyoBvy5fihAImEkQ3_PXI6QTaM"),
             )
         )
     }
