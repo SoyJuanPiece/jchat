@@ -73,6 +73,12 @@ SET last_message_preview = ?,
     unread_count = unread_count + 1
 WHERE id = ?;
 
+updateChatLastMessageWithoutUnread:
+UPDATE chats
+SET last_message_preview = ?,
+    last_message_at = ?
+WHERE id = ?;
+
 markChatAsRead:
 UPDATE chats SET unread_count = 0 WHERE id = ?;
 

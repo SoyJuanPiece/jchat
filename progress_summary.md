@@ -4,7 +4,7 @@ Este documento registra el progreso, las decisiones clave y los próximos pasos 
 
 ## Última Actualización
 - Fecha: March 13, 2026
-- Estado: Refactor de diseño completo estilo mensajería moderna + setup de **Supabase CLI** con migración base versionada.
+- Estado: UX tipo mensajería + capa de fiabilidad avanzada (reintentos de envío y sincronización de lectura en tiempo real).
 
 ---
 
@@ -68,6 +68,21 @@ Este documento registra el progreso, las decisiones clave y los próximos pasos 
     *   publicación realtime,
     *   configuración de bucket `chat-media`.
 *   **Cambio:** Añadida guía operativa en `supabase/README.md` para link + `db push`.
+
+### Etapa 6: Fiabilidad de Mensajería (Completada)
+
+#### 6.1 Reintento de Mensajes Fallidos
+*   **Cambio:** Añadida acción `Retry` directamente en burbujas fallidas del usuario.
+*   **Cambio:** Nuevo intent y flujo en `ConversationViewModel` para reintentar envíos sin salir del chat.
+*   **Cambio:** Nuevo contrato `retryFailedMessage` en repositorio, con transición de estados `FAILED -> SENDING -> SENT/FAILED`.
+
+#### 6.2 Consistencia de Estados Leído/No Leído
+*   **Cambio:** Corrección de preview de último mensaje para evitar incremento de `unread_count` en mensajes enviados por el usuario local.
+*   **Cambio:** Al marcar chat como leído, ahora también se sincroniza estado remoto en Supabase (`READ`).
+
+#### 6.3 Realtime de Actualizaciones
+*   **Cambio:** Añadido stream de eventos `UPDATE` de mensajes en Realtime para reflejar cambios de estado (incluyendo lecturas) en vivo.
+*   **Cambio:** Persistencia local automática de updates remotos para mantener UI y cache alineados.
 
 ---
 

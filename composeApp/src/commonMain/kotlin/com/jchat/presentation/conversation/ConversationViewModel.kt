@@ -47,6 +47,9 @@ sealed interface ConversationIntent {
     /** User long-pressed a message and chose "Delete". */
     data class DeleteMessage(val messageId: String) : ConversationIntent
 
+    /** User tapped retry on a failed message. */
+    data class RetryFailedMessage(val messageId: String) : ConversationIntent
+
     /** User dismisses the error snackbar. */
     data object DismissError : ConversationIntent
 }
@@ -88,6 +91,7 @@ class ConversationViewModel(
             ConversationIntent.SendTextMessage -> sendText()
             is ConversationIntent.SendMediaMessage -> sendMedia(intent.localPath, intent.contentType)
             is ConversationIntent.DeleteMessage -> deleteMessage(intent.messageId)
+            is ConversationIntent.RetryFailedMessage -> retryFailedMessage(intent.messageId)
             ConversationIntent.DismissError -> _state.update { it.copy(errorMessage = null) }
         }
     }
@@ -156,6 +160,13 @@ class ConversationViewModel(
     private fun deleteMessage(messageId: String) {
         viewModelScope.launch {
             runCatching { repository.deleteMessage(messageId) }
+                .onFailure { e -> _state.update { it.copy(errorMessage = e.message) } }
+        }
+    }
+
+    private fun retryFailedMessage(messageId: String) {
+        viewModelScope.launch {
+            runCatching { repository.retryFailedMessage(chatId, messageId) }
                 .onFailure { e -> _state.update { it.copy(errorMessage = e.message) } }
         }
     }

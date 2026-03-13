@@ -38,6 +38,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBar
@@ -185,6 +186,9 @@ fun ConversationScreen(
                     messages = state.messages,
                     currentUserId = currentUserId,
                     listState = listState,
+                    onRetryFailedMessage = { messageId ->
+                        viewModel.onIntent(ConversationIntent.RetryFailedMessage(messageId))
+                    },
                 )
             }
         }
@@ -198,6 +202,7 @@ private fun MessageList(
     messages: List<Message>,
     currentUserId: String,
     listState: androidx.compose.foundation.lazy.LazyListState,
+    onRetryFailedMessage: (String) -> Unit,
 ) {
     val conversationItems = remember(messages, currentUserId) {
         buildConversationItems(messages = messages, currentUserId = currentUserId)
@@ -232,6 +237,7 @@ private fun MessageList(
                     isFromCurrentUser = item.isFromCurrentUser,
                     groupedWithPrevious = item.groupedWithPrevious,
                     groupedWithNext = item.groupedWithNext,
+                    onRetryFailedMessage = onRetryFailedMessage,
                 )
             }
         }
@@ -246,6 +252,7 @@ private fun MessageBubble(
     isFromCurrentUser: Boolean,
     groupedWithPrevious: Boolean,
     groupedWithNext: Boolean,
+    onRetryFailedMessage: (String) -> Unit,
 ) {
     val alignment = if (isFromCurrentUser) Alignment.CenterEnd else Alignment.CenterStart
     val bubbleColor = if (isFromCurrentUser) {
@@ -336,6 +343,19 @@ private fun MessageBubble(
                             status = message.status,
                             defaultTint = contentColor.copy(alpha = 0.8f),
                         )
+
+                        if (message.status == MessageStatus.FAILED) {
+                            TextButton(
+                                onClick = { onRetryFailedMessage(message.id) },
+                                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 0.dp),
+                            ) {
+                                Text(
+                                    text = "Retry",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.error,
+                                )
+                            }
+                        }
                     }
                 }
             }

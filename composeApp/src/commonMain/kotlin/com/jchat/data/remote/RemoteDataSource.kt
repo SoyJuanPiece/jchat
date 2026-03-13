@@ -170,9 +170,24 @@ class RemoteDataSource(private val supabase: SupabaseClient) {
             .insert(message) { select() }
             .decodeSingle<MessageDto>()
 
+    suspend fun markMessagesAsRead(chatId: String, currentUserId: String) {
+        supabase.from("messages").update(
+            {
+                set("status", "READ")
+            }
+        ) {
+            filter {
+                eq("chat_id", chatId)
+                neq("sender_id", currentUserId)
+                neq("status", "READ")
+            }
+        }
+    }
+
     fun subscribeToMessages(chatId: String): Flow<MessageDto> = flow {
-        val channel = supabase.channel("messages:$chatId")
-        activeChannels[chatId] = channel
+        val channelKey = "$chatId:insert"
+        val channel = supabase.channel("messages-insert:$chatId")
+        activeChannels[channelKey] = channel
         channel.subscribe()
         supabase.realtime.connect()
 
@@ -186,10 +201,29 @@ class RemoteDataSource(private val supabase: SupabaseClient) {
         }
     }
 
+    fun subscribeToMessageUpdates(chatId: String): Flow<MessageDto> = flow {
+        val channelKey = "$chatId:update"
+        val channel = supabase.channel("messages-update:$chatId")
+        activeChannels[channelKey] = channel
+        channel.subscribe()
+        supabase.realtime.connect()
+
+        channel.postgresChangeFlow<PostgresAction.Update>(schema = "public") {
+            table = "messages"
+            filter("chat_id", FilterOperator.EQ, chatId)
+        }.collect { action ->
+            val jsonString = action.record.toString()
+            val dto = json.decodeFromString(MessageDto.serializer(), jsonString)
+            emit(dto)
+        }
+    }
+
     suspend fun unsubscribeFromMessages(chatId: String) {
-        activeChannels[chatId]?.let { channel ->
+        val keysToRemove = activeChannels.keys.filter { it.startsWith("$chatId:") }
+        keysToRemove.forEach { key ->
+            val channel = activeChannels[key] ?: return@forEach
             channel.unsubscribe()
-            activeChannels.remove(chatId)
+            activeChannels.remove(key)
         }
     }
 

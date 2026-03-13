@@ -103,6 +103,10 @@ class ChatRepositoryImpl(
 
     override suspend fun markChatAsRead(chatId: String) = withContext(Dispatchers.IO) {
         local.markChatAsRead(chatId)
+        val userId = remote.getCurrentUserId() ?: return@withContext
+        runCatching {
+            remote.markMessagesAsRead(chatId = chatId, currentUserId = userId)
+        }
     }
 
     // ─── Messages ─────────────────────────────────────────────────────────────
@@ -131,7 +135,12 @@ class ChatRepositoryImpl(
 
         // 2. Update chat preview locally
         withContext(Dispatchers.IO) {
-            local.updateChatLastMessage(chatId, content, now.toEpochMilliseconds())
+            local.updateChatLastMessage(
+                chatId = chatId,
+                preview = content,
+                timestamp = now.toEpochMilliseconds(),
+                incrementUnread = false,
+            )
         }
 
         // 3. Remote write
@@ -188,16 +197,27 @@ class ChatRepositoryImpl(
         if (realtimeJobs.containsKey(chatId)) return
 
         val job = scope.launch {
-            remote.subscribeToMessages(chatId).collect { dto ->
-                if (dto.senderId != remote.getCurrentUserId()) {
+            launch {
+                remote.subscribeToMessages(chatId).collect { dto ->
+                    if (dto.senderId != remote.getCurrentUserId()) {
+                        withContext(Dispatchers.IO) {
+                            val message = dto.toDomain()
+                            local.upsertMessage(message)
+                            local.updateChatLastMessage(
+                                chatId = chatId,
+                                preview = message.content ?: "Media message",
+                                timestamp = message.createdAt.toEpochMilliseconds(),
+                                incrementUnread = true,
+                            )
+                        }
+                    }
+                }
+            }
+
+            launch {
+                remote.subscribeToMessageUpdates(chatId).collect { dto ->
                     withContext(Dispatchers.IO) {
-                        val message = dto.toDomain()
-                        local.upsertMessage(message)
-                        local.updateChatLastMessage(
-                            chatId = chatId,
-                            preview = message.content ?: "Media message",
-                            timestamp = message.createdAt.toEpochMilliseconds()
-                        )
+                        local.upsertMessage(dto.toDomain())
                     }
                 }
             }
@@ -284,6 +304,54 @@ class ChatRepositoryImpl(
 
     override suspend fun deleteMessage(messageId: String) = withContext(Dispatchers.IO) {
         local.softDeleteMessage(messageId, Clock.System.now().toEpochMilliseconds())
+    }
+
+    override suspend fun retryFailedMessage(chatId: String, messageId: String) {
+        val message = withContext(Dispatchers.IO) {
+            local.getMessageById(messageId)
+        } ?: return
+
+        if (message.chatId != chatId || message.status != MessageStatus.FAILED) return
+
+        withContext(Dispatchers.IO) {
+            local.updateMessageStatus(
+                messageId = message.id,
+                status = MessageStatus.SENDING,
+                updatedAt = Clock.System.now().toEpochMilliseconds(),
+            )
+        }
+
+        runCatching {
+            remote.sendMessage(
+                MessageDto(
+                    id = message.id,
+                    chatId = message.chatId,
+                    senderId = message.senderId,
+                    content = message.content,
+                    contentType = message.contentType.name,
+                    mediaUrl = message.mediaUrl,
+                    status = "SENT",
+                    createdAt = message.createdAt.toString(),
+                    updatedAt = Clock.System.now().toString(),
+                )
+            )
+        }.onSuccess {
+            withContext(Dispatchers.IO) {
+                local.updateMessageStatus(
+                    messageId = message.id,
+                    status = MessageStatus.SENT,
+                    updatedAt = Clock.System.now().toEpochMilliseconds(),
+                )
+            }
+        }.onFailure {
+            withContext(Dispatchers.IO) {
+                local.updateMessageStatus(
+                    messageId = message.id,
+                    status = MessageStatus.FAILED,
+                    updatedAt = Clock.System.now().toEpochMilliseconds(),
+                )
+            }
+        }
     }
 
     private fun readFileBytes(path: String): ByteArray {

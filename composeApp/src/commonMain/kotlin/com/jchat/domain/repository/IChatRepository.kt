@@ -82,6 +82,9 @@ interface IChatRepository {
      */
     suspend fun deleteMessage(messageId: String)
 
+    /** Retries a previously failed message send operation. */
+    suspend fun retryFailedMessage(chatId: String, messageId: String)
+
     // ─── Sync ─────────────────────────────────────────────────────────────────
 
     /**

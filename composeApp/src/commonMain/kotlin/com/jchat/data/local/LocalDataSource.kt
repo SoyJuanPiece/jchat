@@ -62,12 +62,25 @@ class LocalDataSource(private val db: JChatDatabase) {
         )
     }
 
-    fun updateChatLastMessage(chatId: String, preview: String, timestamp: Long) {
-        messagesQueries.updateChatLastMessage(
-            last_message_preview = preview,
-            last_message_at = timestamp,
-            id = chatId,
-        )
+    fun updateChatLastMessage(
+        chatId: String,
+        preview: String,
+        timestamp: Long,
+        incrementUnread: Boolean,
+    ) {
+        if (incrementUnread) {
+            messagesQueries.updateChatLastMessage(
+                last_message_preview = preview,
+                last_message_at = timestamp,
+                id = chatId,
+            )
+        } else {
+            messagesQueries.updateChatLastMessageWithoutUnread(
+                last_message_preview = preview,
+                last_message_at = timestamp,
+                id = chatId,
+            )
+        }
     }
 
     fun markChatAsRead(chatId: String) {
@@ -135,6 +148,9 @@ class LocalDataSource(private val db: JChatDatabase) {
 
     fun getPendingMessages(): List<Message> =
         messagesQueries.getPendingMessages().executeAsList().map { it.toMessage() }
+
+    fun getMessageById(messageId: String): Message? =
+        messagesQueries.getMessageById(messageId).executeAsOneOrNull()?.toMessage()
 
     fun clearAllData() {
         // Respect FK dependencies: messages -> chats -> profiles.
