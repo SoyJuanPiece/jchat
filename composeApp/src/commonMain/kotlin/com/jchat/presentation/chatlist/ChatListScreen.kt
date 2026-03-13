@@ -7,13 +7,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -23,34 +19,26 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.jchat.domain.model.Chat
 import com.jchat.domain.model.OnlineStatus
-import com.jchat.presentation.chatlist.ChatListViewModel
-import com.jchat.presentation.chatlist.ChatListIntent
-import com.jchat.presentation.chatlist.ChatListEvent
-import kotlinx.coroutines.flow.SharedFlow
 import org.koin.compose.viewmodel.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChatListScreen(
     onNavigateToConversation: (chatId: String) -> Unit,
-    onNavigateToProfile: () -> Unit,
     viewModel: ChatListViewModel = koinViewModel(),
 ) {
     val state by viewModel.state.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
+    var showNewChatDialog by remember { mutableStateOf(false) }
 
-    // Consume navigation events
     LaunchedEffect(viewModel.events) {
         viewModel.events.collect { event ->
             when (event) {
-                is ChatListEvent.NavigateToConversation -> {
-                    onNavigateToConversation(event.chatId)
-                }
+                is ChatListEvent.NavigateToConversation -> onNavigateToConversation(event.chatId)
             }
         }
     }
 
-    // Show error in snackbar
     LaunchedEffect(state.errorMessage) {
         state.errorMessage?.let {
             snackbarHostState.showSnackbar(it)
@@ -58,23 +46,91 @@ fun ChatListScreen(
         }
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        when {
-            state.isLoading && state.chats.isEmpty() -> {
-                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+    Scaffold(
+        floatingActionButton = {
+            FloatingActionButton(
+                onClick = { showNewChatDialog = true },
+                containerColor = MaterialTheme.colorScheme.primary
+            ) {
+                Icon(Icons.Default.Add, contentDescription = "New Chat")
             }
-
-            else -> {
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
+    ) { padding ->
+        Box(modifier = Modifier.fillMaxSize().padding(padding)) {
+            if (state.isLoading && state.chats.isEmpty()) {
+                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+            } else if (state.filteredChats.isEmpty()) {
+                EmptyState(state.isSearchMode)
+            } else {
                 ChatList(
-                    chats = state.chats,
-                    onChatClick = { chatId ->
-                        viewModel.onIntent(ChatListIntent.OpenChat(chatId))
-                    },
+                    chats = state.filteredChats,
+                    onChatClick = { viewModel.onIntent(ChatListIntent.OpenChat(it)) }
                 )
             }
         }
-        SnackbarHost(hostState = snackbarHostState, modifier = Modifier.align(Alignment.BottomCenter))
     }
+
+    if (showNewChatDialog) {
+        NewChatDialog(
+            onDismiss = { showNewChatDialog = false },
+            onConfirm = { username ->
+                viewModel.onIntent(ChatListIntent.CreateChat(username))
+                showNewChatDialog = false
+            },
+            isCreating = state.isCreatingChat
+        )
+    }
+}
+
+@Composable
+private fun EmptyState(isSearch: Boolean) {
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Text(
+            text = if (isSearch) "No chats found" else "No conversations yet. Tap + to start one!",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
+@Composable
+private fun NewChatDialog(
+    onDismiss: () -> Unit,
+    onConfirm: (String) -> Unit,
+    isCreating: Boolean
+) {
+    var username by remember { mutableStateOf("") }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("New Conversation") },
+        text = {
+            Column {
+                Text("Enter the username of the person you want to chat with.")
+                Spacer(Modifier.height(16.dp))
+                OutlinedTextField(
+                    value = username,
+                    onValueChange = { username = it },
+                    label = { Text("Username") },
+                    placeholder = { Text("e.g. juan_perez") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = { onConfirm(username) },
+                enabled = username.isNotBlank() && !isCreating
+            ) {
+                if (isCreating) CircularProgressIndicator(Modifier.size(20.dp))
+                else Text("Start Chat")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        }
+    )
 }
 
 @Composable
@@ -85,8 +141,8 @@ private fun ChatList(
     LazyColumn(modifier = Modifier.fillMaxSize()) {
         items(
             items = chats,
-            key = { it.id },          // stable keys for efficient diffing
-            contentType = { "chat" }, // single content type → optimised slot reuse
+            key = { it.id },
+            contentType = { "chat" }
         ) { chat ->
             ChatItem(
                 chat = chat,
@@ -106,24 +162,18 @@ private fun ChatItem(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 10.dp),
+            .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        // Avatar with online-status indicator
-        BadgedBox(
-            badge = {
-                if (chat.participant.status == OnlineStatus.ONLINE) {
-                    Badge(containerColor = MaterialTheme.colorScheme.tertiary)
-                }
-            },
+        Surface(
+            shape = CircleShape,
+            modifier = Modifier.size(52.dp),
+            color = MaterialTheme.colorScheme.surfaceVariant
         ) {
             AsyncImage(
                 model = chat.participant.avatarUrl,
-                contentDescription = "${chat.participant.displayName} avatar",
-                modifier = Modifier
-                    .size(52.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.surfaceVariant),
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize().clip(CircleShape)
             )
         }
 
@@ -146,11 +196,9 @@ private fun ChatItem(
                 Text(
                     text = chat.lastMessageAt?.let { formatTimestamp(it) } ?: "",
                     style = MaterialTheme.typography.bodySmall,
-                    color = if (chat.unreadCount > 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontWeight = if (chat.unreadCount > 0) FontWeight.Bold else FontWeight.Normal
+                    color = if (chat.unreadCount > 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-            Spacer(modifier = Modifier.height(2.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -185,10 +233,7 @@ private fun ChatItem(
     }
 }
 
-/** Formats a timestamp to a human-readable string. */
 private fun formatTimestamp(instant: kotlinx.datetime.Instant): String {
-    // A full implementation would use kotlinx-datetime to compute
-    // "Today / Yesterday / date" relative strings.
     val ms = instant.toEpochMilliseconds()
     val now = kotlinx.datetime.Clock.System.now().toEpochMilliseconds()
     val diffMs = now - ms

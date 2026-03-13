@@ -101,6 +101,18 @@ fun ProfileScreen(
 
                 Spacer(modifier = Modifier.height(32.dp))
 
+                // Avatar URL Field
+                OutlinedTextField(
+                    value = state.avatarUrl ?: "",
+                    onValueChange = { viewModel.onIntent(ProfileIntent.UpdateAvatarUrl(it)) },
+                    label = { Text("Avatar URL") },
+                    placeholder = { Text("https://example.com/photo.jpg") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
                 // Display Name Field
                 OutlinedTextField(
                     value = state.displayName,

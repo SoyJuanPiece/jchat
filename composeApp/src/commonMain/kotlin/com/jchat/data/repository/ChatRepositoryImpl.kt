@@ -70,6 +70,24 @@ class ChatRepositoryImpl(
         // In a more complete app, we would also clear the local database here.
     }
 
+    override suspend fun startChat(username: String): String = withContext(Dispatchers.IO) {
+        val myId = remote.getCurrentUserId() ?: error("Not authenticated")
+        val targetUser = remote.searchUser(username) ?: error("User not found: @$username")
+        
+        val chatId = remote.createChat(myId, targetUser.id)
+        
+        // Optimistically insert into local DB
+        local.upsertProfile(targetUser.toDomain())
+        local.upsertChat(
+            Chat(
+                id = chatId,
+                participant = targetUser.toDomain(),
+                createdAt = Clock.System.now()
+            )
+        )
+        chatId
+    }
+
     // ─── Chats ────────────────────────────────────────────────────────────────
 
     override fun observeChats(): Flow<List<Chat>> = local.observeChats()

@@ -22,7 +22,11 @@ import kotlinx.coroutines.launch
 /** All UI state for the chat-list screen. */
 data class ChatListState(
     val chats: List<Chat> = emptyList(),
+    val filteredChats: List<Chat> = emptyList(),
+    val searchQuery: String = "",
+    val isSearchMode: Boolean = false,
     val isLoading: Boolean = true,
+    val isCreatingChat: Boolean = false,
     val errorMessage: String? = null,
 )
 
@@ -36,6 +40,10 @@ sealed interface ChatListIntent {
 
     /** User dismisses the error snackbar. */
     data object DismissError : ChatListIntent
+
+    data class UpdateSearchQuery(val query: String) : ChatListIntent
+    data class ToggleSearchMode(val enabled: Boolean) : ChatListIntent
+    data class CreateChat(val username: String) : ChatListIntent
 }
 
 /** One-shot navigation events emitted by the ViewModel. */
@@ -67,6 +75,37 @@ class ChatListViewModel(
             is ChatListIntent.OpenChat -> navigateToConversation(intent.chatId)
             ChatListIntent.Refresh -> observeChats()
             ChatListIntent.DismissError -> _state.update { it.copy(errorMessage = null) }
+            is ChatListIntent.UpdateSearchQuery -> updateSearchQuery(intent.query)
+            is ChatListIntent.ToggleSearchMode -> _state.update { 
+                it.copy(isSearchMode = intent.enabled, searchQuery = if (intent.enabled) it.searchQuery else "") 
+            }
+            is ChatListIntent.CreateChat -> createChat(intent.username)
+        }
+    }
+
+    private fun updateSearchQuery(query: String) {
+        _state.update { s ->
+            val filtered = if (query.isBlank()) s.chats else {
+                s.chats.filter { 
+                    it.participant.displayName.contains(query, ignoreCase = true) || 
+                    it.participant.username.contains(query, ignoreCase = true) 
+                }
+            }
+            s.copy(searchQuery = query, filteredChats = filtered)
+        }
+    }
+
+    private fun createChat(username: String) {
+        viewModelScope.launch {
+            _state.update { it.copy(isCreatingChat = true, errorMessage = null) }
+            try {
+                val chatId = repository.startChat(username.removePrefix("@").trim())
+                _events.emit(ChatListEvent.NavigateToConversation(chatId))
+            } catch (e: Exception) {
+                _state.update { it.copy(errorMessage = e.message) }
+            } finally {
+                _state.update { it.copy(isCreatingChat = false) }
+            }
         }
     }
 
@@ -81,7 +120,14 @@ class ChatListViewModel(
                 }
                 .collect { chats ->
                     _state.update {
-                        it.copy(chats = chats, isLoading = false)
+                        it.copy(
+                            chats = chats, 
+                            filteredChats = if (it.searchQuery.isBlank()) chats else chats.filter { c ->
+                                c.participant.displayName.contains(it.searchQuery, ignoreCase = true) || 
+                                c.participant.username.contains(it.searchQuery, ignoreCase = true)
+                            },
+                            isLoading = false
+                        )
                     }
                 }
         }

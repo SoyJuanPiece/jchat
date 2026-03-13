@@ -39,12 +39,18 @@ fun JChatNavGraph(currentUserId: String?) {
             )
         }
         composable(ROUTE_HOME) {
+            val remote = org.koin.compose.koinInject<com.jchat.data.remote.RemoteDataSource>()
             HomeScreen(
                 onNavigateToConversation = { chatId ->
                     navController.navigate("conversation/$chatId")
                 },
                 onNavigateToProfile = {
                     navController.navigate(ROUTE_PROFILE)
+                },
+                onSignOut = {
+                    kotlinx.coroutines.MainScope().launch {
+                        remote.signOut()
+                    }
                 }
             )
         }

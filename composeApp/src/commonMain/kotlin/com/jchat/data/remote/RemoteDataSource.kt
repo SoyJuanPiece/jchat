@@ -27,6 +27,9 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 
 // Private Json instance for manual decoding
 private val json = Json { ignoreUnknownKeys = true }
@@ -123,6 +126,32 @@ class RemoteDataSource(private val supabase: SupabaseClient) {
         ) {
             filter { eq("id", userId) }
         }
+    }
+
+    suspend fun searchUser(username: String): ProfileDto? =
+        supabase.from("profiles")
+            .select { filter { eq("username", username) } }
+            .decodeSingleOrNull<ProfileDto>()
+
+    suspend fun createChat(myId: String, targetId: String): String {
+        // 1. Create chat record
+        val chatResponse = supabase.from("chats").insert(buildJsonObject {}) { select() }.decodeSingle<JsonElement>()
+        val chatId = chatResponse.jsonObject["id"]?.jsonPrimitive?.content ?: error("Failed to create chat")
+
+        // 2. Add participants
+        val participants = listOf(
+            buildJsonObject { 
+                put("chat_id", chatId)
+                put("profile_id", myId)
+            },
+            buildJsonObject { 
+                put("chat_id", chatId)
+                put("profile_id", targetId)
+            }
+        )
+        supabase.from("chat_participants").insert(participants)
+        
+        return chatId
     }
 
     // ─── Messages ─────────────────────────────────────────────────────────────

@@ -29,6 +29,9 @@ interface IChatRepository {
     /** Signs out the current user and clears local session data. */
     suspend fun signOut()
 
+    /** Starts a new chat with the user matching [username]. Returns the new chatId. */
+    suspend fun startChat(username: String): String
+
     // ─── Chats ────────────────────────────────────────────────────────────────
 
     /**
