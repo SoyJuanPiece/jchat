@@ -53,6 +53,16 @@ jobs:
       - name: Build Android Release Artifacts
         run: gradle :composeApp:assembleRelease :composeApp:bundleRelease
 
+      - name: Upload Android Release Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: jchat-release-${{ github.sha }}
+          retention-days: 14
+          if-no-files-found: error
+          path: |
+            composeApp/build/outputs/apk/release/*.apk
+            composeApp/build/outputs/bundle/release/*.aab
+
       - name: Create GitHub Release
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v1
