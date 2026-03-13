@@ -34,7 +34,14 @@ fun AuthScreen(
     LaunchedEffect(state.errorMessage) {
         state.errorMessage?.let {
             snackbarHostState.showSnackbar(it)
-            viewModel.onIntent(AuthIntent.DismissError)
+            viewModel.onIntent(AuthIntent.DismissMessages)
+        }
+    }
+
+    LaunchedEffect(state.successMessage) {
+        state.successMessage?.let {
+            snackbarHostState.showSnackbar(it)
+            viewModel.onIntent(AuthIntent.DismissMessages)
         }
     }
 

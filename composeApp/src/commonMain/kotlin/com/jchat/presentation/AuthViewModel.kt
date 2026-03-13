@@ -19,6 +19,7 @@ data class AuthState(
     val isLoginMode: Boolean = true,
     val isLoading: Boolean = false,
     val errorMessage: String? = null,
+    val successMessage: String? = null,
     val isAuthenticated: Boolean = false,
 )
 
@@ -29,7 +30,7 @@ sealed interface AuthIntent {
     data class UpdateDisplayName(val value: String) : AuthIntent
     data object ToggleMode : AuthIntent
     data object Submit : AuthIntent
-    data object DismissError : AuthIntent
+    data object DismissMessages : AuthIntent
 }
 
 sealed interface AuthEvent {
@@ -52,27 +53,45 @@ class AuthViewModel(
             is AuthIntent.UpdatePassword -> _state.update { it.copy(password = intent.value) }
             is AuthIntent.UpdateUsername -> _state.update { it.copy(username = intent.value) }
             is AuthIntent.UpdateDisplayName -> _state.update { it.copy(displayName = intent.value) }
-            AuthIntent.ToggleMode -> _state.update { it.copy(isLoginMode = !it.isLoginMode) }
+            AuthIntent.ToggleMode -> _state.update {
+                it.copy(
+                    isLoginMode = !it.isLoginMode,
+                    errorMessage = null,
+                    successMessage = null,
+                )
+            }
             AuthIntent.Submit -> submit()
-            AuthIntent.DismissError -> _state.update { it.copy(errorMessage = null) }
+            AuthIntent.DismissMessages -> _state.update { it.copy(errorMessage = null, successMessage = null) }
         }
     }
 
     private fun submit() {
         viewModelScope.launch {
-            _state.update { it.copy(isLoading = true, errorMessage = null) }
+            val current = _state.value
+            _state.update { it.copy(isLoading = true, errorMessage = null, successMessage = null) }
             try {
-                if (_state.value.isLoginMode) {
-                    remote.signIn(_state.value.email, _state.value.password)
+                if (current.isLoginMode) {
+                    remote.signIn(current.email, current.password)
+                    _events.emit(AuthEvent.AuthSuccess)
                 } else {
                     remote.signUp(
-                        _state.value.email,
-                        _state.value.password,
-                        _state.value.username,
-                        _state.value.displayName
+                        current.email,
+                        current.password,
+                        current.username,
+                        current.displayName
                     )
+
+                    // Ensure sign-up never leaves an active session before email confirmation.
+                    runCatching { remote.signOut() }
+
+                    _state.update {
+                        it.copy(
+                            isLoginMode = true,
+                            password = "",
+                            successMessage = "Te enviamos un correo de confirmacion. Confirma tu email y luego inicia sesion.",
+                        )
+                    }
                 }
-                _events.emit(AuthEvent.AuthSuccess)
             } catch (e: Exception) {
                 _state.update { it.copy(errorMessage = e.message ?: "Authentication failed") }
             } finally {
