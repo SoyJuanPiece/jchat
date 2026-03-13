@@ -110,52 +110,92 @@ class ChatRepositoryImpl(
             local.updateChatLastMessage(chatId, content, now.toEpochMilliseconds())
         }
 
-        // 3. Background remote send (Simulado)
+        // 3. Remote write
         scope.launch {
-            kotlinx.coroutines.delay(1000L) // Simular el tiempo de red
-            local.updateMessageStatus(
-                messageId = message.id,
-                status = MessageStatus.SENT,
-                updatedAt = Clock.System.now().toEpochMilliseconds(),
-            )
-
-            // Simular respuesta del otro usuario (Bot)
-            kotlinx.coroutines.delay(2000L)
-            simulateIncomingMessage(chatId, "¡Hola! Soy un bot. Recibí tu mensaje: \"$content\"")
-        }
-    }
-
-    private suspend fun simulateIncomingMessage(chatId: String, content: String) {
-        val chat = local.observeChats().take(1).collect { chats ->
-            val targetChat = chats.find { it.id == chatId }
-            if (targetChat != null) {
-                val now = Clock.System.now()
-                val incomingMessage = Message(
-                    id = uuid4().toString(),
-                    chatId = chatId,
-                    senderId = targetChat.participant.id, // Responder como el otro participante
-                    content = content,
-                    contentType = ContentType.TEXT,
-                    status = MessageStatus.SENT,
-                    createdAt = now,
-                    updatedAt = now,
+            try {
+                val dto = MessageDto(
+                    id = message.id,
+                    chatId = message.chatId,
+                    senderId = message.senderId,
+                    content = message.content,
+                    contentType = message.contentType.name,
+                    mediaUrl = message.mediaUrl,
+                    status = "SENT",
+                    createdAt = message.createdAt.toString(),
+                    updatedAt = message.updatedAt.toString()
                 )
+                remote.sendMessage(dto)
+                
                 withContext(Dispatchers.IO) {
-                    local.insertMessage(incomingMessage)
-                    local.updateChatLastMessage(chatId, content, now.toEpochMilliseconds())
+                    local.updateMessageStatus(
+                        messageId = message.id,
+                        status = MessageStatus.SENT,
+                        updatedAt = Clock.System.now().toEpochMilliseconds(),
+                    )
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.IO) {
+                    local.updateMessageStatus(
+                        messageId = message.id,
+                        status = MessageStatus.FAILED,
+                        updatedAt = Clock.System.now().toEpochMilliseconds(),
+                    )
                 }
             }
         }
     }
 
     /**
-     * Uploads a media file and sends the message once the URL is available.
-     * Emits upload progress [0.0 – 1.0] through the returned [Flow].
-     *
-     * The `onProgress` callback in [RemoteDataSource.uploadMedia] runs synchronously
-     * on the upload thread. Since we are already inside a `flow { }` builder here,
-     * we can call `emit()` directly from within that same coroutine context.
+     * Internal listener job for real-time messages.
+     * In a production app, manage this carefully to avoid multiple observers per chat.
      */
+    private val realtimeJobs = mutableMapOf<String, kotlinx.coroutines.Job>()
+
+    override suspend fun syncMessages(chatId: String) {
+        withContext(Dispatchers.IO) {
+            try {
+                val remoteMessages = remote.fetchMessages(chatId)
+                remoteMessages.forEach { dto ->
+                    local.upsertMessage(dto.toDomain())
+                }
+            } catch (e: Exception) {
+                // Silently fail or log – UI will show whatever is in local DB.
+            }
+        }
+    }
+
+    override suspend fun subscribeToRealtimeMessages(chatId: String) {
+        if (realtimeJobs.containsKey(chatId)) return
+
+        val job = scope.launch {
+            remote.subscribeToMessages(chatId).collect { dto ->
+                // Skip if it's our own message (already handled optimistically)
+                if (dto.senderId != remote.getCurrentUserId()) {
+                    withContext(Dispatchers.IO) {
+                        val message = dto.toDomain()
+                        local.upsertMessage(message)
+                        local.updateChatLastMessage(
+                            chatId = chatId,
+                            preview = message.content ?: "Media message",
+                            timestamp = message.createdAt.toEpochMilliseconds()
+                        )
+                    }
+                }
+            }
+        }
+        realtimeJobs[chatId] = job
+    }
+
+    override suspend fun unsubscribeFromRealtimeMessages(chatId: String) {
+        realtimeJobs[chatId]?.cancel()
+        realtimeJobs.remove(chatId)
+        remote.unsubscribeFromMessages(chatId)
+    }
+
+    private suspend fun simulateIncomingMessage(chatId: String, content: String) {
+        // Obsoleto - Usando Supabase Realtime
+    }
+
     override fun sendMediaMessage(
         chatId: String,
         mediaLocalPath: String,
@@ -169,7 +209,7 @@ class ChatRepositoryImpl(
         val ext = mediaLocalPath.substringAfterLast('.', "bin")
         val remotePath = "chat-media/$chatId/$messageId.$ext"
 
-        // Insert placeholder message locally
+        // 1. Insert placeholder message locally
         val message = Message(
             id = messageId,
             chatId = chatId,
@@ -183,46 +223,55 @@ class ChatRepositoryImpl(
         )
         withContext(Dispatchers.IO) { local.insertMessage(message) }
 
-        // Simular la carga de archivos
-        emit(0.0f)
-        kotlinx.coroutines.delay(500L)
-        emit(0.5f)
-        kotlinx.coroutines.delay(500L)
+        // 2. Real upload via Supabase Storage
+        var publicUrl: String? = null
+        try {
+            val bytes = readFileBytes(mediaLocalPath)
+            remote.uploadMedia("chat-media", remotePath, bytes).collect { url ->
+                publicUrl = url
+            }
+        } catch (e: Exception) {
+            withContext(Dispatchers.IO) {
+                local.updateMessageStatus(messageId, MessageStatus.FAILED, Clock.System.now().toEpochMilliseconds())
+            }
+            return@flow
+        }
 
-        val publicUrl = "https://via.placeholder.com/150/0000FF/FFFFFF?text=${contentType.name}" // URL de prueba
+        // 3. Send message metadata to Database
+        if (publicUrl != null) {
+            try {
+                val dto = MessageDto(
+                    id = messageId,
+                    chatId = chatId,
+                    senderId = currentUserId,
+                    content = null,
+                    contentType = contentType.name,
+                    mediaUrl = publicUrl,
+                    status = "SENT",
+                    createdAt = now.toString(),
+                    updatedAt = now.toString()
+                )
+                remote.sendMessage(dto)
 
-        // Update local record with the remote URL
-        withContext(Dispatchers.IO) {
-            local.updateMessageMediaUrl(
-                messageId = messageId,
-                mediaUrl = publicUrl,
-                status = MessageStatus.SENT,
-                updatedAt = Clock.System.now().toEpochMilliseconds(),
-            )
+                withContext(Dispatchers.IO) {
+                    local.updateMessageMediaUrl(
+                        messageId = messageId,
+                        mediaUrl = publicUrl!!,
+                        status = MessageStatus.SENT,
+                        updatedAt = Clock.System.now().toEpochMilliseconds(),
+                    )
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.IO) {
+                    local.updateMessageStatus(messageId, MessageStatus.FAILED, Clock.System.now().toEpochMilliseconds())
+                }
+            }
         }
         emit(1.0f)
     }
 
     override suspend fun deleteMessage(messageId: String) = withContext(Dispatchers.IO) {
         local.softDeleteMessage(messageId, Clock.System.now().toEpochMilliseconds())
-    }
-
-    // ─── Sync (Simulado) ─────────────────────────────────────────────────────────────────
-
-    override suspend fun syncMessages(chatId: String) {
-        // No-op: No se sincroniza con el backend por ahora.
-        kotlinx.coroutines.delay(500L) // Simular un breve retraso
-        Unit
-    }
-
-    override suspend fun subscribeToRealtimeMessages(chatId: String) {
-        // No-op: No hay suscripción en tiempo real por ahora.
-        kotlinx.coroutines.delay(100L)
-    }
-
-    override suspend fun unsubscribeFromRealtimeMessages(chatId: String) {
-        // No-op: No hay desuscripción en tiempo real por ahora.
-        kotlinx.coroutines.delay(100L)
     }
 
     /**

@@ -63,9 +63,11 @@ class RemoteDataSource(private val supabase: SupabaseClient) {
 
     // ─── Auth ─────────────────────────────────────────────────────────────────
 
-    // TODO: Usar autenticación real de Supabase cuando se conecte el backend.
-    // Por ahora, devuelve un ID de usuario de prueba para simular la sesión.
-    fun getCurrentUserId(): String? = "test_user_id_123"
+    /** Returns the unique ID of the currently signed-in user, if any. */
+    fun getCurrentUserId(): String? = supabase.auth.currentUserOrNull()?.id
+
+    /** Returns the email of the currently signed-in user, if any. */
+    fun getCurrentUserEmail(): String? = supabase.auth.currentUserOrNull()?.email
 
     // ─── Profiles ─────────────────────────────────────────────────────────────
 
