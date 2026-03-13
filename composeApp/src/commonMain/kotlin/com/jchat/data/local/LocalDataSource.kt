@@ -172,7 +172,7 @@ class LocalDataSource(private val db: JChatDatabase) {
     fun setSetting(key: String, value: String, updatedAt: Long) {
         settingsQueries.upsertSetting(
             key = key,
-            value = value,
+            value_ = value,
             updated_at = updatedAt,
         )
     }
