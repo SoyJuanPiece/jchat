@@ -11,9 +11,10 @@
 
     <application
         android:name=".JChatApplication"
-        android:allowBackup="true"
+        android:allowBackup="false"
         android:label="JChat"
         android:supportsRtl="true"
+        android:usesCleartextTraffic="false"
         android:theme="@style/Theme.JChat">
 
         <activity

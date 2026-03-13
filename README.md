@@ -181,3 +181,41 @@ The repository always writes to the local DB first, then syncs to the remote. Re
 # iOS (from Xcode or via command line)
 ./gradlew :composeApp:linkDebugFrameworkIosSimulatorArm64
 ```
+
+## Production Release
+
+Android production artifacts are built from the tag-based GitHub Actions workflow in [.github/workflows/release.yml](.github/workflows/release.yml).
+
+Required GitHub secrets:
+
+- `SUPABASE_URL`
+- `SUPABASE_ANON_KEY`
+- `ANDROID_KEYSTORE_BASE64`
+- `ANDROID_STORE_PASSWORD`
+- `ANDROID_KEY_ALIAS`
+- `ANDROID_KEY_PASSWORD`
+
+Optional version overrides:
+
+- `APP_VERSION_NAME`
+- `APP_VERSION_CODE`
+
+What the release workflow does now:
+
+- injects Supabase config into Android `BuildConfig`
+- decodes the release keystore during CI
+- builds signed `release` artifacts instead of `debug`
+- uploads both APK and AAB to the GitHub Release
+
+Local release build example:
+
+```bash
+export SUPABASE_URL="https://your-project.supabase.co"
+export SUPABASE_ANON_KEY="your-anon-key"
+export STORE_PASSWORD="..."
+export KEY_ALIAS="..."
+export KEY_PASSWORD="..."
+export ANDROID_KEYSTORE_PATH="$PWD/composeApp/key.jks"
+
+gradle :composeApp:assembleRelease :composeApp:bundleRelease
+```

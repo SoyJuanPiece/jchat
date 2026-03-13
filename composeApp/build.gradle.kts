@@ -1,6 +1,17 @@
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
+fun Project.readConfig(name: String, defaultValue: String? = null): String {
+    val value = providers.gradleProperty(name).orNull
+        ?: providers.environmentVariable(name).orNull
+        ?: defaultValue
+
+    return value ?: error("Missing required config: $name")
+}
+
+fun Project.readOptionalConfig(name: String): String? =
+    providers.gradleProperty(name).orNull ?: providers.environmentVariable(name).orNull
+
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.androidApplication)
@@ -79,6 +90,16 @@ android {
     namespace = "com.jchat"
     compileSdk = libs.versions.androidCompileSdk.get().toInt()
 
+    val appVersionCode = readConfig("APP_VERSION_CODE", "10501").toInt()
+    val appVersionName = readConfig("APP_VERSION_NAME", "1.5.1")
+    val supabaseUrl = readConfig("SUPABASE_URL", "https://ppincerggnnauznalbjd.supabase.co")
+    val supabaseAnonKey = readConfig("SUPABASE_ANON_KEY", "")
+    val releaseKeystorePath = readOptionalConfig("ANDROID_KEYSTORE_PATH") ?: "$projectDir/key.jks"
+    val releaseStorePassword = readOptionalConfig("STORE_PASSWORD")
+    val releaseKeyAlias = readOptionalConfig("KEY_ALIAS")
+    val releaseKeyPassword = readOptionalConfig("KEY_PASSWORD")
+    val hasReleaseSigning = !releaseStorePassword.isNullOrBlank() && !releaseKeyAlias.isNullOrBlank() && !releaseKeyPassword.isNullOrBlank()
+
     sourceSets["main"].manifest.srcFile("src/androidMain/AndroidManifest.xml")
     sourceSets["main"].res.srcDirs("src/androidMain/res")
     sourceSets["main"].resources.srcDirs("src/commonMain/resources")
@@ -87,13 +108,42 @@ android {
         applicationId = "com.jchat"
         minSdk = libs.versions.androidMinSdk.get().toInt()
         targetSdk = libs.versions.androidTargetSdk.get().toInt()
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = appVersionCode
+        versionName = appVersionName
     }
+
+    buildFeatures {
+        buildConfig = true
+    }
+
+    defaultConfig {
+        buildConfigField("String", "SUPABASE_URL", "\"$supabaseUrl\"")
+        buildConfigField("String", "SUPABASE_ANON_KEY", "\"$supabaseAnonKey\"")
+        buildConfigField("String", "APP_ENV", "\"production\"")
+    }
+
+    signingConfigs {
+        if (hasReleaseSigning) {
+            create("release") {
+                storeFile = file(releaseKeystorePath)
+                storePassword = releaseStorePassword
+                keyAlias = releaseKeyAlias
+                keyPassword = releaseKeyPassword
+            }
+        }
+    }
+
     buildTypes {
+        debug {
+            applicationIdSuffix = ".debug"
+            versionNameSuffix = "-debug"
+            buildConfigField("String", "APP_ENV", "\"debug\"")
+        }
         release {
             isMinifyEnabled = false
-            signingConfig = signingConfigs.getByName("debug")
+            isShrinkResources = false
+            isDebuggable = false
+            signingConfig = if (hasReleaseSigning) signingConfigs.getByName("release") else signingConfigs.getByName("debug")
         }
     }
     compileOptions {

@@ -9,6 +9,7 @@ local.properties
 *.apk
 *.aab
 *.keystore
+*.jks
 
 # iOS / Xcode
 *.xcworkspace/xcuserdata/
