@@ -8,6 +8,7 @@ import com.jchat.data.remote.SupabaseConfig
 import com.jchat.data.remote.createSupabaseClient
 import com.jchat.data.repository.ChatRepositoryImpl
 import com.jchat.domain.repository.IChatRepository
+import com.jchat.presentation.auth.AuthViewModel
 import com.jchat.presentation.chatlist.ChatListViewModel
 import com.jchat.presentation.conversation.ConversationViewModel
 import com.jchat.presentation.profile.ProfileViewModel
@@ -46,6 +47,7 @@ val dataModule = module {
 }
 
 val presentationModule = module {
+    factoryOf(::AuthViewModel)
     factoryOf(::ChatListViewModel)
     factoryOf(::ProfileViewModel)
     factory { (chatId: String) -> ConversationViewModel(chatId, get()) }
