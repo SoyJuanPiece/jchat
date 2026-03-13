@@ -135,6 +135,7 @@ private fun EmptyState(isSearch: Boolean) {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun NewChatDialog(
     onDismiss: () -> Unit,
