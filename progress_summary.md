@@ -4,7 +4,7 @@ Este documento registra el progreso, las decisiones clave y los próximos pasos 
 
 ## Última Actualización
 - Fecha: March 13, 2026
-- Estado: Flujo de conversación avanzado con respuestas citadas, acciones por mensaje y migración remota aplicada en Supabase.
+- Estado: Módulo de Ajustes estilo Element X integrado (perfil, privacidad, apariencia, sesión) con navegación y tema dinámico.
 
 ---
 
@@ -101,19 +101,42 @@ Este documento registra el progreso, las decisiones clave y los próximos pasos 
 *   **Cambio:** Nueva migración aplicada: `20260313141651_add_message_reply_fields.sql`.
 *   **Cambio:** Base remota sincronizada con columnas `reply_to_message_id` y `reply_preview`.
 
+### Etapa 8: Ajustes Integrales Estilo Element X (Completada)
+
+#### 8.1 Arquitectura de Settings
+*   **Cambio:** Añadidos `SettingsScreen` y `SettingsViewModel` con patrón State/Intent para centralizar acciones de configuración.
+*   **Cambio:** Integrada nueva ruta de navegación `settings` en el grafo principal.
+*   **Decisión:** Mantener la edición profunda de perfil en pantalla dedicada (`ProfileScreen`) y usar Settings como hub principal.
+
+#### 8.2 Personalización y Apariencia
+*   **Cambio:** Implementado selector de tema con 3 modos (`Sistema`, `Claro`, `Oscuro`) y aplicación en caliente sobre toda la app.
+*   **Cambio:** `JChatTheme` evolucionado para recibir `ThemeOption` en lugar de solo booleano de dark mode.
+*   **Cambio:** `App.kt` ahora mantiene estado global de tema y lo propaga al `NavGraph`.
+
+#### 8.3 Privacidad, Cuenta e Información
+*   **Cambio:** Secciones de ajustes inspiradas en Element X: personalización, privacidad, cuenta, información y sesión.
+*   **Cambio:** Cabecera de perfil enriquecida (avatar/inicial, display name y `@username`) con acceso directo a edición.
+*   **Cambio:** Home menu actualizado para priorizar acceso a Ajustes y mantener cierre de sesión accesible.
+
+#### 8.4 Sesión y Seguridad
+*   **Cambio:** Flujo de cierre de sesión conectado desde Ajustes con estado visual de progreso.
+*   **Cambio:** Añadido diálogo de confirmación para eliminación de cuenta (guardrail UX).
+*   **Nota:** La eliminación real de cuenta queda pendiente de endpoint/backoffice seguro para evitar operaciones destructivas desde cliente.
+
 ---
 
 ## Próximos Pasos (Bloque Consolidado)
 
-1.  **Gestión de Archivos Avanzada:**
+1.  **Cerrar placeholders de Settings:**
+    *   Implementar flujo real de cambio de contraseña con Supabase Auth.
+    *   Implementar pantalla de usuarios bloqueados con backend real (tabla/políticas).
+    *   Añadir flujo de reporte de problema (mailto/API de soporte).
+2.  **Persistencia de preferencias UX:**
+    *   Guardar `ThemeOption` y toggles de settings en almacenamiento local para restauración al reiniciar.
+3.  **Gestión de Archivos Avanzada:**
     *   Implementar un selector de archivos real (Galería/Cámara) para Android e iOS.
-2.  **Seguridad y Estabilidad:**
-    *   Manejo de errores de conexión más amigable para el usuario.
-    *   Añadir estrategia de reintento/reenvío para mensajes en estado `FAILED`.
-3.  **Calidad de Producto:**
-    *   Añadir tests de integración para flujo auth -> chat -> sign out (incluyendo limpieza local).
-    *   Automatizar validación en GitHub Actions para SQLDelight + navegación base.
-4.  **Operación Supabase:**
-    *   Ejecutar `supabase link --project-ref ... --password ...` y `supabase db push` desde credenciales reales del proyecto.
+4.  **Calidad y Operación:**
+    *   Añadir tests de integración para auth -> chat -> settings -> sign out.
+    *   Automatizar validación en CI para SQLDelight + navegación + compilación shared.
 
 ---
