@@ -107,6 +107,7 @@ class ChatRepositoryImpl(
         runCatching {
             remote.markMessagesAsRead(chatId = chatId, currentUserId = userId)
         }
+        Unit
     }
 
     // ─── Messages ─────────────────────────────────────────────────────────────
