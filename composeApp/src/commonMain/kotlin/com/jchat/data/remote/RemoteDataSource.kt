@@ -130,10 +130,37 @@ class RemoteDataSource(private val supabase: SupabaseClient) {
         }
     }
 
-    suspend fun searchUser(username: String): ProfileDto? =
-        supabase.from("profiles")
-            .select { filter { eq("username", username) } }
-            .decodeSingleOrNull<ProfileDto>()
+    suspend fun searchUser(username: String): ProfileDto? {
+        val normalized = username.trim().removePrefix("@").trim()
+        if (normalized.isBlank()) return null
+
+        val exactMatch = supabase.from("profiles")
+            .select {
+                filter { ilike("username", normalized) }
+                limit(1)
+            }
+            .decodeList<ProfileDto>()
+            .firstOrNull()
+        if (exactMatch != null) return exactMatch
+
+        val partialPattern = "%$normalized%"
+        val partialUsername = supabase.from("profiles")
+            .select {
+                filter { ilike("username", partialPattern) }
+                limit(1)
+            }
+            .decodeList<ProfileDto>()
+            .firstOrNull()
+        if (partialUsername != null) return partialUsername
+
+        return supabase.from("profiles")
+            .select {
+                filter { ilike("display_name", partialPattern) }
+                limit(1)
+            }
+            .decodeList<ProfileDto>()
+            .firstOrNull()
+    }
 
     suspend fun createChat(myId: String, targetId: String): String {
         // 1. Create chat record

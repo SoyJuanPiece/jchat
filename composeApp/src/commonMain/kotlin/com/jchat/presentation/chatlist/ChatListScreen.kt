@@ -7,13 +7,16 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.border
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -59,7 +62,19 @@ fun ChatListScreen(
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
-        Box(modifier = Modifier.fillMaxSize().padding(padding)) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .background(
+                    Brush.verticalGradient(
+                        listOf(
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.06f),
+                            MaterialTheme.colorScheme.background,
+                        )
+                    )
+                )
+        ) {
             if (state.isLoading && state.chats.isEmpty()) {
                 CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
             } else if (state.filteredChats.isEmpty()) {
@@ -88,11 +103,35 @@ fun ChatListScreen(
 @Composable
 private fun EmptyState(isSearch: Boolean) {
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Text(
-            text = if (isSearch) "No chats found" else "No conversations yet. Tap + to start one!",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
+        Surface(
+            shape = RoundedCornerShape(20.dp),
+            tonalElevation = 1.dp,
+            color = MaterialTheme.colorScheme.surface,
+        ) {
+            Column(
+                modifier = Modifier.padding(horizontal = 24.dp, vertical = 20.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Search,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.75f),
+                    modifier = Modifier.size(28.dp),
+                )
+                Spacer(modifier = Modifier.height(10.dp))
+                Text(
+                    text = if (isSearch) "No encontramos chats" else "Tu bandeja esta vacia",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = if (isSearch) "Prueba otro nombre o username" else "Toca + para buscar alguien por username o nombre",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
     }
 }
 
@@ -103,36 +142,65 @@ private fun NewChatDialog(
     isCreating: Boolean
 ) {
     var username by remember { mutableStateOf("") }
-    AlertDialog(
+    ModalBottomSheet(
         onDismissRequest = onDismiss,
-        title = { Text("New Conversation") },
-        text = {
-            Column {
-                Text("Enter the username of the person you want to chat with.")
-                Spacer(Modifier.height(16.dp))
-                OutlinedTextField(
-                    value = username,
-                    onValueChange = { username = it },
-                    label = { Text("Username") },
-                    placeholder = { Text("e.g. juan_perez") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-        },
-        confirmButton = {
+        dragHandle = { BottomSheetDefaults.DragHandle() },
+        containerColor = MaterialTheme.colorScheme.surface,
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp)
+                .padding(bottom = 24.dp),
+        ) {
+            Text(
+                text = "Nueva conversacion",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+            )
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(
+                text = "Busca por @username o por nombre visible.",
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+
+            OutlinedTextField(
+                value = username,
+                onValueChange = { username = it },
+                label = { Text("Usuario") },
+                placeholder = { Text("@juanpiece o Juan") },
+                singleLine = true,
+                leadingIcon = {
+                    Icon(Icons.Default.Search, contentDescription = null)
+                },
+                modifier = Modifier.fillMaxWidth(),
+                supportingText = {
+                    Text("Tip: no importa mayusculas/minusculas")
+                }
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
             Button(
-                onClick = { onConfirm(username) },
-                enabled = username.isNotBlank() && !isCreating
+                onClick = { onConfirm(username.trim()) },
+                enabled = username.isNotBlank() && !isCreating,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(50.dp),
             ) {
-                if (isCreating) CircularProgressIndicator(Modifier.size(20.dp))
-                else Text("Start Chat")
+                if (isCreating) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        strokeWidth = 2.dp,
+                    )
+                } else {
+                    Text("Buscar e iniciar chat")
+                }
             }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
         }
-    )
+    }
 }
 
 @Composable

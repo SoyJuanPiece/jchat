@@ -97,9 +97,15 @@ class ChatListViewModel(
 
     private fun createChat(username: String) {
         viewModelScope.launch {
+            val normalized = username.trim().removePrefix("@").trim()
+            if (normalized.isBlank()) {
+                _state.update { it.copy(errorMessage = "Escribe un username o nombre para buscar") }
+                return@launch
+            }
+
             _state.update { it.copy(isCreatingChat = true, errorMessage = null) }
             try {
-                val chatId = repository.startChat(username.removePrefix("@").trim())
+                val chatId = repository.startChat(normalized)
                 _events.emit(ChatListEvent.NavigateToConversation(chatId))
             } catch (e: Exception) {
                 _state.update { it.copy(errorMessage = e.message) }

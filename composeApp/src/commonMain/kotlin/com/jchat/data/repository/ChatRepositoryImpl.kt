@@ -81,7 +81,11 @@ class ChatRepositoryImpl(
 
     override suspend fun startChat(username: String): String = withContext(Dispatchers.IO) {
         val myId = remote.getCurrentUserId() ?: error("Not authenticated")
-        val targetUser = remote.searchUser(username) ?: error("User not found: @$username")
+        val query = username.trim().removePrefix("@").trim()
+        if (query.isBlank()) error("Ingresa un usuario valido")
+
+        val targetUser = remote.searchUser(query) ?: error("No encontramos a '$query'. Verifica username o display name.")
+        if (targetUser.id == myId) error("No puedes iniciar un chat contigo mismo")
         
         val chatId = remote.createChat(myId, targetUser.id)
         
