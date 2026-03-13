@@ -5,6 +5,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.border
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -165,16 +166,33 @@ private fun ChatItem(
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Surface(
-            shape = CircleShape,
-            modifier = Modifier.size(52.dp),
-            color = MaterialTheme.colorScheme.surfaceVariant
-        ) {
-            AsyncImage(
-                model = chat.participant.avatarUrl,
-                contentDescription = null,
-                modifier = Modifier.fillMaxSize().clip(CircleShape)
-            )
+        Box(modifier = Modifier.size(52.dp)) {
+            Surface(
+                shape = CircleShape,
+                modifier = Modifier.fillMaxSize(),
+                color = MaterialTheme.colorScheme.surfaceVariant
+            ) {
+                AsyncImage(
+                    model = chat.participant.avatarUrl,
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize().clip(CircleShape)
+                )
+            }
+
+            if (chat.participant.status == OnlineStatus.ONLINE) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .size(12.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.tertiary)
+                        .border(
+                            width = 2.dp,
+                            color = MaterialTheme.colorScheme.surface,
+                            shape = CircleShape,
+                        )
+                )
+            }
         }
 
         Spacer(modifier = Modifier.width(12.dp))

@@ -27,7 +27,6 @@ import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.AttachFile
 import androidx.compose.material.icons.filled.DoneAll
 import androidx.compose.material.icons.filled.Schedule
-import androidx.compose.material.icons.filled.Done
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -50,13 +49,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.jchat.domain.model.ContentType
 import com.jchat.domain.model.Message
 import com.jchat.domain.model.MessageStatus
+import kotlinx.datetime.Clock
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
 import kotlinx.datetime.Instant
@@ -100,13 +101,28 @@ fun ConversationScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    Column {
-                        Text(state.participantName.ifBlank { "Chat" })
-                        Text(
-                            text = if (state.isTyping) "typing..." else state.participantStatus,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = if (state.isTyping) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        AsyncImage(
+                            model = state.participantAvatarUrl,
+                            contentDescription = null,
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.surfaceVariant)
                         )
+                        Spacer(Modifier.width(10.dp))
+                        Column {
+                            Text(
+                                text = state.participantName.ifBlank { "Chat" },
+                                fontWeight = FontWeight.SemiBold,
+                                maxLines = 1,
+                            )
+                            Text(
+                                text = if (state.isTyping) "typing..." else state.participantStatus,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = if (state.isTyping) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
                     }
                 },
                 navigationIcon = {
@@ -138,10 +154,26 @@ fun ConversationScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            MaterialTheme.colorScheme.surface,
+                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.22f),
+                            MaterialTheme.colorScheme.surface,
+                        )
+                    )
+                )
                 .padding(paddingValues),
         ) {
             if (state.isLoading && state.messages.isEmpty()) {
                 CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+            } else if (state.messages.isEmpty()) {
+                Text(
+                    text = "No messages yet. Say hello!",
+                    modifier = Modifier.align(Alignment.Center),
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             } else {
                 MessageList(
                     messages = state.messages,
@@ -161,22 +193,41 @@ private fun MessageList(
     currentUserId: String,
     listState: androidx.compose.foundation.lazy.LazyListState,
 ) {
+    val conversationItems = remember(messages, currentUserId) {
+        buildConversationItems(messages = messages, currentUserId = currentUserId)
+    }
+
     LazyColumn(
         state = listState,
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(horizontal = 8.dp, vertical = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
+        verticalArrangement = Arrangement.spacedBy(2.dp),
         reverseLayout = false,
     ) {
         items(
-            items = messages,
-            key = { it.id },
-            contentType = { it.contentType.name },
-        ) { message ->
-            MessageBubble(
-                message = message,
-                isFromCurrentUser = message.senderId == currentUserId,
-            )
+            items = conversationItems,
+            key = {
+                when (it) {
+                    is ConversationListItem.DayHeader -> "day-${it.epochDay}"
+                    is ConversationListItem.Bubble -> it.message.id
+                }
+            },
+            contentType = {
+                when (it) {
+                    is ConversationListItem.DayHeader -> "day_header"
+                    is ConversationListItem.Bubble -> it.message.contentType.name
+                }
+            },
+        ) { item ->
+            when (item) {
+                is ConversationListItem.DayHeader -> DaySeparator(label = item.label)
+                is ConversationListItem.Bubble -> MessageBubble(
+                    message = item.message,
+                    isFromCurrentUser = item.isFromCurrentUser,
+                    groupedWithPrevious = item.groupedWithPrevious,
+                    groupedWithNext = item.groupedWithNext,
+                )
+            }
         }
     }
 }
@@ -187,6 +238,8 @@ private fun MessageList(
 private fun MessageBubble(
     message: Message,
     isFromCurrentUser: Boolean,
+    groupedWithPrevious: Boolean,
+    groupedWithNext: Boolean,
 ) {
     val alignment = if (isFromCurrentUser) Alignment.CenterEnd else Alignment.CenterStart
     val bubbleColor = if (isFromCurrentUser) {
@@ -199,16 +252,19 @@ private fun MessageBubble(
     } else {
         MaterialTheme.colorScheme.onSecondaryContainer
     }
-    val shape = if (isFromCurrentUser) {
-        RoundedCornerShape(16.dp, 16.dp, 2.dp, 16.dp)
-    } else {
-        RoundedCornerShape(16.dp, 16.dp, 16.dp, 2.dp)
-    }
+    val shape = bubbleShape(
+        isFromCurrentUser = isFromCurrentUser,
+        groupedWithPrevious = groupedWithPrevious,
+        groupedWithNext = groupedWithNext,
+    )
 
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 2.dp),
+            .padding(
+                top = if (groupedWithPrevious) 1.dp else 6.dp,
+                bottom = if (groupedWithNext) 1.dp else 4.dp,
+            ),
         contentAlignment = alignment,
     ) {
         Surface(
@@ -270,7 +326,10 @@ private fun MessageBubble(
                     )
                     if (isFromCurrentUser) {
                         Spacer(modifier = Modifier.size(4.dp))
-                        MessageStatusIcon(status = message.status)
+                        MessageStatusIcon(
+                            status = message.status,
+                            defaultTint = contentColor.copy(alpha = 0.8f),
+                        )
                     }
                 }
             }
@@ -279,14 +338,17 @@ private fun MessageBubble(
 }
 
 @Composable
-private fun MessageStatusIcon(status: MessageStatus) {
+private fun MessageStatusIcon(
+    status: MessageStatus,
+    defaultTint: Color,
+) {
     when (status) {
         MessageStatus.SENDING -> {
             Icon(
                 imageVector = Icons.Default.Schedule,
                 contentDescription = "Sending",
                 modifier = Modifier.size(14.dp),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                tint = defaultTint.copy(alpha = 0.7f),
             )
         }
 
@@ -295,7 +357,7 @@ private fun MessageStatusIcon(status: MessageStatus) {
                 imageVector = Icons.Default.DoneAll,
                 contentDescription = "Delivered",
                 modifier = Modifier.size(14.dp),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                tint = defaultTint,
             )
         }
 
@@ -304,7 +366,7 @@ private fun MessageStatusIcon(status: MessageStatus) {
                 imageVector = Icons.Default.DoneAll,
                 contentDescription = "Read",
                 modifier = Modifier.size(14.dp),
-                tint = MaterialTheme.colorScheme.primary,
+                tint = ReadReceiptColor,
             )
         }
 
@@ -313,6 +375,28 @@ private fun MessageStatusIcon(status: MessageStatus) {
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.error,
         )
+    }
+}
+
+@Composable
+private fun DaySeparator(label: String) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Surface(
+            shape = RoundedCornerShape(999.dp),
+            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.9f),
+        ) {
+            Text(
+                text = label,
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
     }
 }
 
@@ -392,4 +476,124 @@ private fun formatTime(instant: Instant): String {
     val hours = localDateTime.hour.toString().padStart(2, '0')
     val minutes = localDateTime.minute.toString().padStart(2, '0')
     return "$hours:$minutes"
+}
+
+private sealed interface ConversationListItem {
+    data class DayHeader(
+        val epochDay: Int,
+        val label: String,
+    ) : ConversationListItem
+
+    data class Bubble(
+        val message: Message,
+        val isFromCurrentUser: Boolean,
+        val groupedWithPrevious: Boolean,
+        val groupedWithNext: Boolean,
+    ) : ConversationListItem
+}
+
+private const val MessageGroupWindowMs = 5 * 60 * 1000L
+private val ReadReceiptColor = Color(0xFF1EA7FD)
+
+private fun buildConversationItems(
+    messages: List<Message>,
+    currentUserId: String,
+): List<ConversationListItem> {
+    if (messages.isEmpty()) return emptyList()
+
+    val tz = TimeZone.currentSystemDefault()
+    val result = mutableListOf<ConversationListItem>()
+
+    for (index in messages.indices) {
+        val current = messages[index]
+        val previous = messages.getOrNull(index - 1)
+        val next = messages.getOrNull(index + 1)
+
+        val currentEpochDay = current.createdAt.toLocalDateTime(tz).date.toEpochDays()
+        val previousEpochDay = previous?.createdAt?.toLocalDateTime(tz)?.date?.toEpochDays()
+
+        if (previousEpochDay == null || previousEpochDay != currentEpochDay) {
+            result += ConversationListItem.DayHeader(
+                epochDay = currentEpochDay,
+                label = formatDayLabel(current.createdAt),
+            )
+        }
+
+        result += ConversationListItem.Bubble(
+            message = current,
+            isFromCurrentUser = current.senderId == currentUserId,
+            groupedWithPrevious = shouldGroupMessages(previous, current),
+            groupedWithNext = shouldGroupMessages(current, next),
+        )
+    }
+
+    return result
+}
+
+private fun shouldGroupMessages(
+    first: Message?,
+    second: Message?,
+): Boolean {
+    if (first == null || second == null) return false
+    if (first.senderId != second.senderId) return false
+
+    val tz = TimeZone.currentSystemDefault()
+    val firstDate = first.createdAt.toLocalDateTime(tz).date
+    val secondDate = second.createdAt.toLocalDateTime(tz).date
+    if (firstDate != secondDate) return false
+
+    val diffMs = second.createdAt.toEpochMilliseconds() - first.createdAt.toEpochMilliseconds()
+    return diffMs in 0..MessageGroupWindowMs
+}
+
+private fun bubbleShape(
+    isFromCurrentUser: Boolean,
+    groupedWithPrevious: Boolean,
+    groupedWithNext: Boolean,
+): RoundedCornerShape {
+    val large = 18.dp
+    val medium = 8.dp
+    val tail = 4.dp
+    return if (isFromCurrentUser) {
+        RoundedCornerShape(
+            topStart = large,
+            topEnd = if (groupedWithPrevious) medium else large,
+            bottomEnd = if (groupedWithNext) medium else tail,
+            bottomStart = large,
+        )
+    } else {
+        RoundedCornerShape(
+            topStart = if (groupedWithPrevious) medium else large,
+            topEnd = large,
+            bottomEnd = large,
+            bottomStart = if (groupedWithNext) medium else tail,
+        )
+    }
+}
+
+private fun formatDayLabel(instant: Instant): String {
+    val tz = TimeZone.currentSystemDefault()
+    val date = instant.toLocalDateTime(tz).date
+    val today = Clock.System.now().toLocalDateTime(tz).date
+    val todayEpochDay = today.toEpochDays()
+    val targetEpochDay = date.toEpochDays()
+
+    if (targetEpochDay == todayEpochDay) return "Today"
+    if (targetEpochDay == todayEpochDay - 1) return "Yesterday"
+
+    val month = when (date.monthNumber) {
+        1 -> "Jan"
+        2 -> "Feb"
+        3 -> "Mar"
+        4 -> "Apr"
+        5 -> "May"
+        6 -> "Jun"
+        7 -> "Jul"
+        8 -> "Aug"
+        9 -> "Sep"
+        10 -> "Oct"
+        11 -> "Nov"
+        else -> "Dec"
+    }
+    return "${date.dayOfMonth} $month"
 }

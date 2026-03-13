@@ -135,6 +135,13 @@ class LocalDataSource(private val db: JChatDatabase) {
 
     fun getPendingMessages(): List<Message> =
         messagesQueries.getPendingMessages().executeAsList().map { it.toMessage() }
+
+    fun clearAllData() {
+        // Respect FK dependencies: messages -> chats -> profiles.
+        messagesQueries.clearMessages()
+        messagesQueries.clearChats()
+        profilesQueries.clearProfiles()
+    }
 }
 
 // ─── Extension Mappers ───────────────────────────────────────────────────────

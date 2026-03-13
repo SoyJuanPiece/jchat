@@ -33,3 +33,6 @@ UPDATE profiles SET status = ?, last_seen_at = ? WHERE id = ?;
 
 deleteProfile:
 DELETE FROM profiles WHERE id = ?;
+
+clearProfiles:
+DELETE FROM profiles;

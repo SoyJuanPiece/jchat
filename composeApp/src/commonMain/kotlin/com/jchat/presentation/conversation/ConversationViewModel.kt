@@ -20,6 +20,7 @@ import kotlinx.coroutines.launch
 data class ConversationState(
     val messages: List<Message> = emptyList(),
     val participantName: String = "",
+    val participantAvatarUrl: String? = null,
     val participantStatus: String = "Offline",
     val inputText: String = "",
     val isLoading: Boolean = true,
@@ -98,10 +99,17 @@ class ConversationViewModel(
             repository.observeChats().collect { chatList ->
                 val chat = chatList.find { it.id == chatId }
                 chat?.let {
-                    _state.update { s -> s.copy(
-                        participantName = it.participant.displayName,
-                        participantStatus = if (it.participant.status == com.jchat.domain.model.OnlineStatus.ONLINE) "Online" else "Offline"
-                    ) }
+                    _state.update { s ->
+                        s.copy(
+                            participantName = it.participant.displayName.ifBlank { it.participant.username },
+                            participantAvatarUrl = it.participant.avatarUrl,
+                            participantStatus = when (it.participant.status) {
+                                com.jchat.domain.model.OnlineStatus.ONLINE -> "Online"
+                                com.jchat.domain.model.OnlineStatus.AWAY -> "Away"
+                                com.jchat.domain.model.OnlineStatus.OFFLINE -> "Offline"
+                            },
+                        )
+                    }
                 }
             }
         }

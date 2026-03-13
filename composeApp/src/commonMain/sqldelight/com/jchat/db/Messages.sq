@@ -79,6 +79,9 @@ UPDATE chats SET unread_count = 0 WHERE id = ?;
 deleteChat:
 DELETE FROM chats WHERE id = ?;
 
+clearChats:
+DELETE FROM chats;
+
 -- ─── Message Queries ─────────────────────────────────────────────────────────
 
 insertMessage:
@@ -136,3 +139,6 @@ SELECT * FROM messages WHERE id = ?;
 
 getPendingMessages:
 SELECT * FROM messages WHERE status = 'sending' ORDER BY created_at ASC;
+
+clearMessages:
+DELETE FROM messages;

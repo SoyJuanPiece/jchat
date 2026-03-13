@@ -66,8 +66,17 @@ class ChatRepositoryImpl(
     }
 
     override suspend fun signOut() = withContext(Dispatchers.IO) {
-        remote.signOut()
-        // In a more complete app, we would also clear the local database here.
+        val signOutFailure = runCatching {
+            remote.signOut()
+        }.exceptionOrNull()
+
+        realtimeJobs.values.forEach { it.cancel() }
+        realtimeJobs.clear()
+        local.clearAllData()
+
+        if (signOutFailure != null) {
+            throw signOutFailure
+        }
     }
 
     override suspend fun startChat(username: String): String = withContext(Dispatchers.IO) {

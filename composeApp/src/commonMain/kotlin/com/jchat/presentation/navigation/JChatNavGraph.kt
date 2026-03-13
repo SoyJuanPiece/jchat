@@ -6,11 +6,14 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.jchat.domain.repository.IChatRepository
 import kotlinx.coroutines.launch
 import com.jchat.presentation.AuthScreen
 import com.jchat.presentation.conversation.ConversationScreen
 import com.jchat.presentation.profile.ProfileScreen
 import com.jchat.presentation.home.HomeScreen
+import org.koin.compose.koinInject
+import androidx.compose.runtime.rememberCoroutineScope
 
 private const val ROUTE_AUTH = "auth"
 private const val ROUTE_HOME = "home"
@@ -24,6 +27,8 @@ private const val ARG_CHAT_ID = "chatId"
 @Composable
 fun JChatNavGraph(currentUserId: String?) {
     val navController = rememberNavController()
+    val scope = rememberCoroutineScope()
+    val repository = koinInject<IChatRepository>()
     val isAuthenticated = !currentUserId.isNullOrBlank()
 
     NavHost(
@@ -40,7 +45,6 @@ fun JChatNavGraph(currentUserId: String?) {
             )
         }
         composable(ROUTE_HOME) {
-            val remote = org.koin.compose.koinInject<com.jchat.data.remote.RemoteDataSource>()
             HomeScreen(
                 onNavigateToConversation = { chatId ->
                     navController.navigate("conversation/$chatId")
@@ -49,8 +53,8 @@ fun JChatNavGraph(currentUserId: String?) {
                     navController.navigate(ROUTE_PROFILE)
                 },
                 onSignOut = {
-                    kotlinx.coroutines.MainScope().launch {
-                        remote.signOut()
+                    scope.launch {
+                        repository.signOut()
                     }
                 }
             )
