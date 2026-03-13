@@ -5,11 +5,10 @@ import com.jchat.domain.model.Message
 import com.jchat.domain.model.MessageStatus
 import com.jchat.domain.model.Profile
 import io.github.jan.supabase.SupabaseClient
-import io.github.jan.supabase.auth.auth
+import io.github.jan.supabase.auth.*
 import io.github.jan.supabase.auth.status.SessionStatus
-import io.github.jan.supabase.auth.providers.builtin.Email
-import io.github.jan.supabase.auth.signInWith
-import io.github.jan.supabase.auth.signUpWith
+import io.github.jan.supabase.auth.providers.*
+import io.github.jan.supabase.auth.providers.builtin.*
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.postgrest.query.filter.FilterOperator

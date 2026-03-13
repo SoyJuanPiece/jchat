@@ -1,4 +1,4 @@
-package com.jchat.presentation.auth
+package com.jchat.presentation
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
