@@ -6,8 +6,10 @@ import com.jchat.domain.model.MessageStatus
 import com.jchat.domain.model.Profile
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.auth
-import io.github.jan.supabase.auth.providers.builtin.Email
 import io.github.jan.supabase.auth.status.SessionStatus
+import io.github.jan.supabase.auth.providers.builtin.Email
+import io.github.jan.supabase.auth.signInWith
+import io.github.jan.supabase.auth.signUpWith
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.postgrest.query.filter.FilterOperator
@@ -80,7 +82,6 @@ class RemoteDataSource(private val supabase: SupabaseClient) {
     fun getCurrentUserEmail(): String? = supabase.auth.currentUserOrNull()?.email
 
     suspend fun signIn(email: String, password: String) {
-        // En Supabase KT 3.x, se puede usar signInWith de forma genérica
         supabase.auth.signInWith(Email) {
             this.email = email
             this.password = password
@@ -117,12 +118,14 @@ class RemoteDataSource(private val supabase: SupabaseClient) {
     suspend fun updateProfile(userId: String, displayName: String, avatarUrl: String?) {
         supabase.from("profiles").update(
             {
-                filter { eq("id", userId) }
+                set("display_name", displayName)
+                if (avatarUrl != null) {
+                    set("avatar_url", avatarUrl)
+                }
             }
         ) {
-            set("display_name", displayName)
-            if (avatarUrl != null) {
-                set("avatar_url", avatarUrl)
+            filter {
+                eq("id", userId)
             }
         }
     }
