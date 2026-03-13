@@ -6,9 +6,10 @@ import com.jchat.domain.model.MessageStatus
 import com.jchat.domain.model.Profile
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.auth
+import io.github.jan.supabase.auth.status.SessionStatus
 import io.github.jan.supabase.auth.providers.builtin.Email
-import io.github.jan.supabase.auth.providers.signInWith
-import io.github.jan.supabase.auth.providers.signUpWith
+import io.github.jan.supabase.auth.signInWith
+import io.github.jan.supabase.auth.signUpWith
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.postgrest.query.filter.FilterOperator
@@ -70,7 +71,9 @@ class RemoteDataSource(private val supabase: SupabaseClient) {
     // ─── Auth ─────────────────────────────────────────────────────────────────
 
     /** A Flow that emits the current user's ID whenever the auth session changes. */
-    val authSessionFlow: Flow<String?> = supabase.auth.sessionFlow.map { it?.user?.id }
+    val authSessionFlow: Flow<String?> = supabase.auth.sessionStatus.map { status ->
+        (status as? SessionStatus.Authenticated)?.session?.user?.id
+    }
 
     /** Returns the unique ID of the currently signed-in user, if any. */
     fun getCurrentUserId(): String? = supabase.auth.currentUserOrNull()?.id
@@ -89,7 +92,7 @@ class RemoteDataSource(private val supabase: SupabaseClient) {
         supabase.auth.signUpWith(Email) {
             this.email = email
             this.password = password
-            data = kotlinx.serialization.json.buildJsonObject {
+            data = buildJsonObject {
                 put("username", username)
                 put("display_name", displayName)
             }
@@ -165,11 +168,6 @@ class RemoteDataSource(private val supabase: SupabaseClient) {
 
     /**
      * Uploads a local file to Supabase Storage and reports progress via a [Flow].
-     *
-     * @param bucket Storage bucket name (e.g., "chat-media").
-     * @param remotePath Destination path within the bucket.
-     * @param data Raw bytes of the file.
-     * @return A [Flow] that emits the public URL of the uploaded file when complete.
      */
     fun uploadMedia(
         bucket: String,
