@@ -6,6 +6,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import kotlinx.coroutines.launch
 import com.jchat.presentation.AuthScreen
 import com.jchat.presentation.conversation.ConversationScreen
 import com.jchat.presentation.profile.ProfileScreen
