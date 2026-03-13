@@ -114,6 +114,19 @@ class RemoteDataSource(private val supabase: SupabaseClient) {
         return fetchProfile(userId)
     }
 
+    suspend fun updateProfile(userId: String, displayName: String, avatarUrl: String?) {
+        supabase.from("profiles").update(
+            {
+                filter { eq("id", userId) }
+            }
+        ) {
+            set("display_name", displayName)
+            if (avatarUrl != null) {
+                set("avatar_url", avatarUrl)
+            }
+        }
+    }
+
     // ─── Messages ─────────────────────────────────────────────────────────────
 
     suspend fun fetchMessages(chatId: String, limit: Int = 50): List<MessageDto> =

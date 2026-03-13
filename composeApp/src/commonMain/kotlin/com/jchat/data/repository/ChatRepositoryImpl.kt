@@ -44,14 +44,25 @@ class ChatRepositoryImpl(
             ?: remote.fetchProfile(userId)?.toDomain()?.also { local.upsertProfile(it) }
     }
 
-    override suspend fun updateProfile(displayName: String, avatarUrl: String?) = withContext(Dispatchers.IO) {
-        val currentProfile = getCurrentProfile() ?: return@withContext
-        val updatedProfile = currentProfile.copy(
-            displayName = displayName,
-            avatarUrl = avatarUrl ?: currentProfile.avatarUrl,
-        )
-        local.upsertProfile(updatedProfile)
-        // In a real app, we would also push this to Supabase.
+    override suspend fun updateProfile(displayName: String, avatar_url: String?) = withContext(Dispatchers.IO) {
+        val userId = remote.getCurrentUserId() ?: return@withContext
+        
+        // 1. Update Supabase
+        try {
+            remote.updateProfile(userId, displayName, avatar_url)
+        } catch (e: Exception) {
+            // Log error or rethrow
+        }
+
+        // 2. Update local
+        val currentProfile = local.getProfileById(userId)
+        if (currentProfile != null) {
+            val updatedProfile = currentProfile.copy(
+                displayName = displayName,
+                avatarUrl = avatar_url ?: currentProfile.avatarUrl,
+            )
+            local.upsertProfile(updatedProfile)
+        }
     }
 
     // ─── Chats ────────────────────────────────────────────────────────────────
