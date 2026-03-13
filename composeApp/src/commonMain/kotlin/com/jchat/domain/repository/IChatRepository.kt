@@ -29,6 +29,15 @@ interface IChatRepository {
     /** Updates the current user's password in Supabase Auth. */
     suspend fun updatePassword(newPassword: String)
 
+    /** Deletes the currently authenticated account from backend and signs out. */
+    suspend fun deleteCurrentAccount()
+
+    /** Writes a local app preference value. */
+    suspend fun setAppSetting(key: String, value: String)
+
+    /** Reads a local app preference value. */
+    suspend fun getAppSetting(key: String): String?
+
     /** Signs out the current user and clears local session data. */
     suspend fun signOut()
 

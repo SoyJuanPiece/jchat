@@ -27,6 +27,7 @@ data class SettingsState(
     val sharePresence: Boolean = true,
     val isLoading: Boolean = true,
     val isSigningOut: Boolean = false,
+    val isDeletingAccount: Boolean = false,
     val showDeleteAccountDialog: Boolean = false,
     val showThemeDialog: Boolean = false,
     val errorMessage: String? = null,
@@ -63,20 +64,39 @@ class SettingsViewModel(
     private fun loadProfile() {
         viewModelScope.launch {
             val profile = repository.getCurrentProfile()
-            _state.update { it.copy(profile = profile, isLoading = false) }
+            val savedTheme = repository.getAppSetting(SettingKeys.THEME_OPTION)
+                ?.let { raw -> ThemeOption.entries.firstOrNull { it.name == raw } }
+                ?: ThemeOption.System
+            val notifications = repository.getAppSetting(SettingKeys.NOTIFICATIONS_ENABLED)
+                ?.toBooleanStrictOrNull() ?: true
+            val presence = repository.getAppSetting(SettingKeys.SHARE_PRESENCE)
+                ?.toBooleanStrictOrNull() ?: true
+
+            _state.update {
+                it.copy(
+                    profile = profile,
+                    themeOption = savedTheme,
+                    notificationsEnabled = notifications,
+                    sharePresence = presence,
+                    isLoading = false,
+                )
+            }
         }
     }
 
     fun onIntent(intent: SettingsIntent) {
         when (intent) {
-            is SettingsIntent.SetTheme -> _state.update {
-                it.copy(themeOption = intent.theme, showThemeDialog = false)
+            is SettingsIntent.SetTheme -> {
+                _state.update { it.copy(themeOption = intent.theme, showThemeDialog = false) }
+                persistSetting(SettingKeys.THEME_OPTION, intent.theme.name)
             }
-            is SettingsIntent.SetNotificationsEnabled -> _state.update {
-                it.copy(notificationsEnabled = intent.enabled)
+            is SettingsIntent.SetNotificationsEnabled -> {
+                _state.update { it.copy(notificationsEnabled = intent.enabled) }
+                persistSetting(SettingKeys.NOTIFICATIONS_ENABLED, intent.enabled.toString())
             }
-            is SettingsIntent.SetSharePresence -> _state.update {
-                it.copy(sharePresence = intent.enabled)
+            is SettingsIntent.SetSharePresence -> {
+                _state.update { it.copy(sharePresence = intent.enabled) }
+                persistSetting(SettingKeys.SHARE_PRESENCE, intent.enabled.toString())
             }
             SettingsIntent.SignOut -> signOut()
             SettingsIntent.ShowDeleteAccountDialog -> _state.update {
@@ -98,6 +118,12 @@ class SettingsViewModel(
         }
     }
 
+    private fun persistSetting(key: String, value: String) {
+        viewModelScope.launch {
+            runCatching { repository.setAppSetting(key, value) }
+        }
+    }
+
     private fun signOut() {
         _state.update { it.copy(isSigningOut = true) }
         viewModelScope.launch {
@@ -110,12 +136,18 @@ class SettingsViewModel(
     }
 
     private fun deleteAccount() {
-        // TODO: implement account deletion via Supabase admin API
-        _state.update {
-            it.copy(
-                showDeleteAccountDialog = false,
-                errorMessage = "Función no disponible aún. Contacta con soporte."
-            )
+        _state.update { it.copy(showDeleteAccountDialog = false, isDeletingAccount = true) }
+        viewModelScope.launch {
+            runCatching {
+                repository.deleteCurrentAccount()
+            }.onFailure { error ->
+                _state.update {
+                    it.copy(
+                        isDeletingAccount = false,
+                        errorMessage = error.message ?: "No se pudo eliminar la cuenta"
+                    )
+                }
+            }
         }
     }
 }

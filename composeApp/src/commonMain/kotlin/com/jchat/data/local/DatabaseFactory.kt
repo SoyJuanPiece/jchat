@@ -34,6 +34,13 @@ fun createDatabase(driverFactory: DatabaseDriverFactory): JChatDatabase {
             parameters = 0,
         )
     }
+    runCatching {
+        driver.execute(
+            identifier = null,
+            sql = "CREATE TABLE IF NOT EXISTS app_settings (key TEXT NOT NULL PRIMARY KEY, value TEXT NOT NULL, updated_at INTEGER NOT NULL DEFAULT 0)",
+            parameters = 0,
+        )
+    }
 
     return database
 }

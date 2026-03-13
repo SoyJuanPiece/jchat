@@ -124,6 +124,11 @@ class RemoteDataSource(private val supabase: SupabaseClient) {
         }
     }
 
+    suspend fun deleteCurrentAccount() {
+        supabase.postgrest.rpc("delete_my_account")
+        runCatching { supabase.auth.signOut() }
+    }
+
     // ─── Profiles ─────────────────────────────────────────────────────────────
 
     suspend fun fetchProfile(userId: String): ProfileDto? =

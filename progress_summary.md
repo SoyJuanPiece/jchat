@@ -4,7 +4,7 @@ Este documento registra el progreso, las decisiones clave y los próximos pasos 
 
 ## Última Actualización
 - Fecha: March 13, 2026
-- Estado: Ajustes cerrados end-to-end con cambio de contraseña, usuarios bloqueados y reporte de problemas sobre backend Supabase.
+- Estado: Pendientes críticos cerrados: bloqueo desde chat, preferencias persistentes y eliminación real de cuenta por RPC aplicada en remoto.
 
 ---
 
@@ -141,14 +141,30 @@ Este documento registra el progreso, las decisiones clave y los próximos pasos 
 *   **Cambio:** Nueva migración `20260313193000_add_blocked_users_and_support_reports.sql` con tablas, índices y políticas RLS.
 *   **Cambio:** Migración aplicada exitosamente en remoto y verificada en `migration list`.
 
+### Etapa 10: Cierre Final de Pendientes UX/Seguridad (Completada)
+
+#### 10.1 Bloqueo desde contexto de conversación
+*   **Cambio:** Añadida acción `Bloquear usuario` en menú superior de `ConversationScreen`.
+*   **Cambio:** Integrado flujo `ConversationIntent.BlockParticipant` para bloquear directamente al contacto del chat.
+
+#### 10.2 Persistencia de preferencias
+*   **Cambio:** Añadida tabla local `app_settings` en SQLDelight para persistir preferencias.
+*   **Cambio:** `SettingsViewModel` ahora guarda y restaura tema + toggles (notificaciones/presencia).
+*   **Cambio:** `App.kt` carga `ThemeOption` persistido al iniciar (aplica tema tras reinicio).
+
+#### 10.3 Eliminación real de cuenta
+*   **Cambio:** Implementada operación real de borrado de cuenta vía RPC `delete_my_account`.
+*   **Cambio:** Nueva migración `20260313203000_add_delete_my_account_rpc.sql` aplicada y verificada en remoto.
+*   **Cambio:** `SettingsViewModel` actualizado para ejecutar borrado real y limpiar sesión local.
+
 ---
 
 ## Próximos Pasos (Bloque Consolidado)
 
 1.  **Persistencia de preferencias UX:**
-    *   Guardar `ThemeOption` y toggles de settings en almacenamiento local para restauración al reiniciar.
+    *   Extender persistencia a más preferencias de UX (orden de pestañas, densidad visual, etc.).
 2.  **Bloqueo desde contexto de usuario:**
-    *   Exponer acción de bloquear usuario desde perfil/chat para alimentar la pantalla de bloqueados.
+    *   Exponer acción de desbloqueo rápido también desde conversación/perfil de contacto.
 3.  **Gestión de Archivos Avanzada:**
     *   Implementar un selector de archivos real (Galería/Cámara) para Android e iOS.
 4.  **Calidad y Operación:**

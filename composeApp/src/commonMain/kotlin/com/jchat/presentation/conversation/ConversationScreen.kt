@@ -35,8 +35,12 @@ import androidx.compose.material.icons.automirrored.filled.Reply
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.AttachFile
 import androidx.compose.material.icons.filled.DoneAll
+import androidx.compose.material.icons.filled.Block
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -100,6 +104,7 @@ fun ConversationScreen(
     val clipboard = LocalClipboardManager.current
     val scope = rememberCoroutineScope()
     var selectedMessage by remember { mutableStateOf<Message?>(null) }
+    var showTopMenu by remember { mutableStateOf(false) }
 
     // Scroll to the bottom on new messages
     LaunchedEffect(viewModel.events) {
@@ -109,6 +114,10 @@ fun ConversationScreen(
                     if (state.messages.isNotEmpty()) {
                         listState.animateScrollToItem(state.messages.lastIndex)
                     }
+                }
+                ConversationEvent.NavigateBack -> {
+                    snackbarHostState.showSnackbar("Usuario bloqueado")
+                    onNavigateBack()
                 }
             }
         }
@@ -158,6 +167,26 @@ fun ConversationScreen(
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                actions = {
+                    Box {
+                        IconButton(onClick = { showTopMenu = true }) {
+                            Icon(Icons.Default.MoreVert, contentDescription = "Más")
+                        }
+                        DropdownMenu(
+                            expanded = showTopMenu,
+                            onDismissRequest = { showTopMenu = false },
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text("Bloquear usuario") },
+                                leadingIcon = { Icon(Icons.Default.Block, contentDescription = null) },
+                                onClick = {
+                                    showTopMenu = false
+                                    viewModel.onIntent(ConversationIntent.BlockParticipant)
+                                },
+                            )
+                        }
                     }
                 },
             )

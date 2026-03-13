@@ -131,6 +131,27 @@ CREATE POLICY "Users can insert own support reports" ON public.support_reports
 CREATE POLICY "Users can view own support reports" ON public.support_reports
     FOR SELECT USING (auth.uid() = user_id);
 
+-- RPC: Self account deletion (auth.users)
+CREATE OR REPLACE FUNCTION public.delete_my_account()
+RETURNS VOID
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, auth
+AS $$
+DECLARE
+    uid UUID := auth.uid();
+BEGIN
+    IF uid IS NULL THEN
+        RAISE EXCEPTION 'Not authenticated';
+    END IF;
+
+    DELETE FROM auth.users WHERE id = uid;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.delete_my_account() FROM public;
+GRANT EXECUTE ON FUNCTION public.delete_my_account() TO authenticated;
+
 -- ─── FUNCTIONS & TRIGGERS ───
 
 -- Automatically create a profile when a new user signs up.

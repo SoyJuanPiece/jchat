@@ -69,6 +69,21 @@ class ChatRepositoryImpl(
         remote.updatePassword(newPassword)
     }
 
+    override suspend fun deleteCurrentAccount() = withContext(Dispatchers.IO) {
+        remote.deleteCurrentAccount()
+        realtimeJobs.values.forEach { it.cancel() }
+        realtimeJobs.clear()
+        local.clearAllData()
+    }
+
+    override suspend fun setAppSetting(key: String, value: String) = withContext(Dispatchers.IO) {
+        local.setSetting(key = key, value = value, updatedAt = Clock.System.now().toEpochMilliseconds())
+    }
+
+    override suspend fun getAppSetting(key: String): String? = withContext(Dispatchers.IO) {
+        local.getSetting(key)
+    }
+
     override suspend fun signOut() = withContext(Dispatchers.IO) {
         val signOutFailure = runCatching {
             remote.signOut()

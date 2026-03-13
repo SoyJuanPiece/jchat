@@ -25,6 +25,7 @@ class LocalDataSource(private val db: JChatDatabase) {
 
     private val messagesQueries = db.messagesQueries
     private val profilesQueries = db.profilesQueries
+    private val settingsQueries = db.settingsQueries
 
     // ─── Profiles ─────────────────────────────────────────────────────────────
 
@@ -165,6 +166,19 @@ class LocalDataSource(private val db: JChatDatabase) {
         messagesQueries.clearChats()
         profilesQueries.clearProfiles()
     }
+
+    // ─── App Settings ────────────────────────────────────────────────────────
+
+    fun setSetting(key: String, value: String, updatedAt: Long) {
+        settingsQueries.upsertSetting(
+            key = key,
+            value = value,
+            updated_at = updatedAt,
+        )
+    }
+
+    fun getSetting(key: String): String? =
+        settingsQueries.getSettingByKey(key).executeAsOneOrNull()
 }
 
 // ─── Extension Mappers ───────────────────────────────────────────────────────

@@ -19,6 +19,7 @@ import kotlinx.coroutines.launch
 /** All UI state for a single conversation screen. */
 data class ConversationState(
     val messages: List<Message> = emptyList(),
+    val participantId: String = "",
     val participantName: String = "",
     val participantAvatarUrl: String? = null,
     val participantStatus: String = "Offline",
@@ -58,6 +59,9 @@ sealed interface ConversationIntent {
     /** User tapped retry on a failed message. */
     data class RetryFailedMessage(val messageId: String) : ConversationIntent
 
+    /** User chose to block the chat participant. */
+    data object BlockParticipant : ConversationIntent
+
     /** User dismisses the error snackbar. */
     data object DismissError : ConversationIntent
 }
@@ -66,6 +70,9 @@ sealed interface ConversationIntent {
 sealed interface ConversationEvent {
     /** Scrolls the list to the last message. */
     data object ScrollToBottom : ConversationEvent
+
+    /** Leave current screen after blocking the participant. */
+    data object NavigateBack : ConversationEvent
 }
 
 // ─── ViewModel ────────────────────────────────────────────────────────────────
@@ -111,6 +118,7 @@ class ConversationViewModel(
             }
             is ConversationIntent.DeleteMessage -> deleteMessage(intent.messageId)
             is ConversationIntent.RetryFailedMessage -> retryFailedMessage(intent.messageId)
+            ConversationIntent.BlockParticipant -> blockParticipant()
             ConversationIntent.DismissError -> _state.update { it.copy(errorMessage = null) }
         }
     }
@@ -124,6 +132,7 @@ class ConversationViewModel(
                 chat?.let {
                     _state.update { s ->
                         s.copy(
+                            participantId = it.participant.id,
                             participantName = it.participant.displayName.ifBlank { it.participant.username },
                             participantAvatarUrl = it.participant.avatarUrl,
                             participantStatus = when (it.participant.status) {
@@ -195,6 +204,21 @@ class ConversationViewModel(
         viewModelScope.launch {
             runCatching { repository.retryFailedMessage(chatId, messageId) }
                 .onFailure { e -> _state.update { it.copy(errorMessage = e.message) } }
+        }
+    }
+
+    private fun blockParticipant() {
+        val participantId = _state.value.participantId
+        if (participantId.isBlank()) return
+
+        viewModelScope.launch {
+            runCatching {
+                repository.blockUser(participantId)
+            }.onSuccess {
+                _events.emit(ConversationEvent.NavigateBack)
+            }.onFailure { error ->
+                _state.update { it.copy(errorMessage = error.message ?: "No se pudo bloquear") }
+            }
         }
     }
 

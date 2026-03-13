@@ -195,8 +195,9 @@ fun SettingsScreen(
             item {
                 SettingsDangerItem(
                     icon = Icons.Default.DeleteForever,
-                    title = "Eliminar cuenta",
+                    title = if (state.isDeletingAccount) "Eliminando cuenta…" else "Eliminar cuenta",
                     onClick = { viewModel.onIntent(SettingsIntent.ShowDeleteAccountDialog) },
+                    enabled = !state.isDeletingAccount,
                 )
             }
 
