@@ -87,6 +87,9 @@ class LocalDataSource(private val db: JChatDatabase) {
         messagesQueries.markChatAsRead(chatId)
     }
 
+    fun getChatIdByParticipantId(participantId: String): String? =
+        messagesQueries.getChatIdByParticipantId(participantId).executeAsOneOrNull()
+
     // ─── Messages ─────────────────────────────────────────────────────────────
 
     fun observeMessages(chatId: String): Flow<List<Message>> =

@@ -68,6 +68,12 @@ FROM chats c
 INNER JOIN profiles p ON c.participant_id = p.id
 WHERE c.id = ?;
 
+getChatIdByParticipantId:
+SELECT id
+FROM chats
+WHERE participant_id = ?
+LIMIT 1;
+
 updateChatLastMessage:
 UPDATE chats
 SET last_message_preview = ?,

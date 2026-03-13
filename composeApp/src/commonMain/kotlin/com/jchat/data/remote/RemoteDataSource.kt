@@ -62,6 +62,12 @@ data class ProfileDto(
     @SerialName("created_at") val createdAt: String,
 )
 
+@Serializable
+data class ChatParticipantDto(
+    @SerialName("chat_id") val chatId: String,
+    @SerialName("profile_id") val profileId: String,
+)
+
 // ─── Remote Data Source ───────────────────────────────────────────────────────
 
 /**
@@ -130,9 +136,10 @@ class RemoteDataSource(private val supabase: SupabaseClient) {
         }
     }
 
-    suspend fun searchUser(username: String, excludeUserId: String? = null): ProfileDto? {
+    /** Returns up to [limit] ranked results matching [username], excluding [excludeUserId]. */
+    suspend fun searchUsers(username: String, excludeUserId: String? = null, limit: Int = 20): List<ProfileDto> {
         val normalized = username.trim().removePrefix("@").trim()
-        if (normalized.isBlank()) return null
+        if (normalized.isBlank()) return emptyList()
 
         val query = normalized.lowercase()
         val partialPattern = "%$normalized%"
@@ -143,7 +150,7 @@ class RemoteDataSource(private val supabase: SupabaseClient) {
                     ilike("username", partialPattern)
                     if (!excludeUserId.isNullOrBlank()) neq("id", excludeUserId)
                 }
-                limit(10)
+                this.limit(10)
             }
             .decodeList<ProfileDto>()
 
@@ -153,7 +160,7 @@ class RemoteDataSource(private val supabase: SupabaseClient) {
                     ilike("display_name", partialPattern)
                     if (!excludeUserId.isNullOrBlank()) neq("id", excludeUserId)
                 }
-                limit(10)
+                this.limit(10)
             }
             .decodeList<ProfileDto>()
 
@@ -176,7 +183,55 @@ class RemoteDataSource(private val supabase: SupabaseClient) {
                 compareBy<ProfileDto> { score(it) }
                     .thenBy { it.username.lowercase() }
             )
-            .firstOrNull()
+            .take(limit)
+    }
+
+    /** Returns the single best-ranked match; delegates to [searchUsers]. */
+    suspend fun searchUser(username: String, excludeUserId: String? = null): ProfileDto? =
+        searchUsers(username, excludeUserId, limit = 1).firstOrNull()
+
+    suspend fun findExistingDirectChatId(myId: String, targetId: String): String? {
+        if (myId == targetId) return null
+
+        val myChatIds = supabase.from("chat_participants")
+            .select {
+                filter { eq("profile_id", myId) }
+            }
+            .decodeList<ChatParticipantDto>()
+            .map { it.chatId }
+            .toSet()
+
+        if (myChatIds.isEmpty()) return null
+
+        val targetRows = supabase.from("chat_participants")
+            .select {
+                filter { eq("profile_id", targetId) }
+            }
+            .decodeList<ChatParticipantDto>()
+
+        val candidateChatIds = targetRows
+            .asSequence()
+            .map { it.chatId }
+            .filter { it in myChatIds }
+            .distinct()
+            .toList()
+
+        candidateChatIds.forEach { chatId ->
+            val participants = supabase.from("chat_participants")
+                .select {
+                    filter { eq("chat_id", chatId) }
+                    this.limit(3)
+                }
+                .decodeList<ChatParticipantDto>()
+                .map { it.profileId }
+
+            val isDirect = participants.size == 2
+            if (isDirect && participants.contains(myId) && participants.contains(targetId)) {
+                return chatId
+            }
+        }
+
+        return null
     }
 
     suspend fun createChat(myId: String, targetId: String): String {

@@ -82,7 +82,7 @@ class ChatRepositoryImpl(
     override suspend fun searchUsers(query: String): List<Profile> = withContext(Dispatchers.IO) {
         val myId = remote.getCurrentUserId() ?: return@withContext emptyList()
         val normalized = query.trim().removePrefix("@").trim()
-        if (normalized.length < 2) return@withContext emptyList()
+        if (normalized.length < 3) return@withContext emptyList()
         remote.searchUsers(normalized, excludeUserId = myId).map { it.toDomain() }
     }
 
@@ -95,44 +95,64 @@ class ChatRepositoryImpl(
             ?: error("No encontramos a '$query'. Verifica username o display name.")
         if (targetUser.id == myId) error("No puedes iniciar un chat contigo mismo")
 
-        val chatId = runCatching {
-            remote.createChat(myId, targetUser.id)
-        }.getOrElse { cause ->
-            throw IllegalStateException(
-                "Encontramos al usuario, pero no pudimos crear el chat. Intenta de nuevo.",
-                cause,
-            )
-        }
-        
-        // Optimistically insert into local DB
-        local.upsertProfile(targetUser.toDomain())
-        local.upsertChat(
-            Chat(
-                id = chatId,
-                participant = targetUser.toDomain(),
-                createdAt = Clock.System.now()
-            )
+        startOrOpenDirectChat(
+            myId = myId,
+            targetProfile = targetUser.toDomain(),
+            createFailureMessage = "Encontramos al usuario, pero no pudimos crear el chat. Intenta de nuevo.",
         )
-        chatId
     }
 
     override suspend fun startChatWithUser(profile: Profile): String = withContext(Dispatchers.IO) {
         val myId = remote.getCurrentUserId() ?: error("No autenticado")
         if (profile.id == myId) error("No puedes iniciar un chat contigo mismo")
-        val chatId = runCatching {
-            remote.createChat(myId, profile.id)
-        }.getOrElse { cause ->
-            throw IllegalStateException("No pudimos crear el chat. Intenta de nuevo.", cause)
+
+        startOrOpenDirectChat(
+            myId = myId,
+            targetProfile = profile,
+            createFailureMessage = "No pudimos crear el chat. Intenta de nuevo.",
+        )
+    }
+
+    private suspend fun startOrOpenDirectChat(
+        myId: String,
+        targetProfile: Profile,
+        createFailureMessage: String,
+    ): String {
+        local.getChatIdByParticipantId(targetProfile.id)?.let { existingLocalChatId ->
+            return existingLocalChatId
         }
-        local.upsertProfile(profile)
+
+        val existingRemoteChatId = runCatching {
+            remote.findExistingDirectChatId(myId = myId, targetId = targetProfile.id)
+        }.getOrNull()
+
+        if (existingRemoteChatId != null) {
+            local.upsertProfile(targetProfile)
+            local.upsertChat(
+                Chat(
+                    id = existingRemoteChatId,
+                    participant = targetProfile,
+                    createdAt = Clock.System.now(),
+                )
+            )
+            return existingRemoteChatId
+        }
+
+        val newChatId = runCatching {
+            remote.createChat(myId, targetProfile.id)
+        }.getOrElse { cause ->
+            throw IllegalStateException(createFailureMessage, cause)
+        }
+
+        local.upsertProfile(targetProfile)
         local.upsertChat(
             Chat(
-                id = chatId,
-                participant = profile,
-                createdAt = Clock.System.now()
+                id = newChatId,
+                participant = targetProfile,
+                createdAt = Clock.System.now(),
             )
         )
-        chatId
+        return newChatId
     }
 
     // ─── Chats ────────────────────────────────────────────────────────────────

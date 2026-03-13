@@ -91,12 +91,19 @@ fun ChatListScreen(
 
     if (showNewChatDialog) {
         NewChatDialog(
-            onDismiss = { showNewChatDialog = false },
-            onConfirm = { username ->
-                viewModel.onIntent(ChatListIntent.CreateChat(username))
+            query = state.userSearchQuery,
+            searchResults = state.userSearchResults,
+            isSearching = state.isSearchingUser,
+            isCreatingChat = state.isCreatingChat,
+            onQueryChange = { viewModel.onIntent(ChatListIntent.UpdateUserSearchQuery(it)) },
+            onUserSelect = { profile ->
+                viewModel.onIntent(ChatListIntent.SelectUser(profile))
                 showNewChatDialog = false
             },
-            isCreating = state.isCreatingChat
+            onDismiss = {
+                showNewChatDialog = false
+                viewModel.onIntent(ChatListIntent.ClearUserSearch)
+            },
         )
     }
 }
@@ -190,13 +197,13 @@ private fun NewChatDialog(
             Spacer(modifier = Modifier.height(8.dp))
 
             when {
-                query.trim().length < 2 -> {
+                query.trim().length < 3 -> {
                     Box(
                         modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp),
                         contentAlignment = Alignment.Center,
                     ) {
                         Text(
-                            text = "Escribe al menos 2 caracteres para buscar",
+                            text = "Escribe al menos 3 caracteres para buscar",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
