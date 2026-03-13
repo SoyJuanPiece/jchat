@@ -13,6 +13,9 @@ import com.jchat.presentation.AuthViewModel
 import com.jchat.presentation.chatlist.ChatListViewModel
 import com.jchat.presentation.conversation.ConversationViewModel
 import com.jchat.presentation.profile.ProfileViewModel
+import com.jchat.presentation.settings.BlockedUsersViewModel
+import com.jchat.presentation.settings.ChangePasswordViewModel
+import com.jchat.presentation.settings.ReportProblemViewModel
 import com.jchat.presentation.settings.SettingsViewModel
 import org.koin.core.module.dsl.factoryOf
 import org.koin.core.module.dsl.singleOf
@@ -45,6 +48,9 @@ val presentationModule = module {
     factoryOf(::ChatListViewModel)
     factoryOf(::ProfileViewModel)
     factoryOf(::SettingsViewModel)
+    factoryOf(::ChangePasswordViewModel)
+    factoryOf(::BlockedUsersViewModel)
+    factoryOf(::ReportProblemViewModel)
     factory { (chatId: String) -> ConversationViewModel(chatId, get()) }
 }
 

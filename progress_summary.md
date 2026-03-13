@@ -4,7 +4,7 @@ Este documento registra el progreso, las decisiones clave y los próximos pasos 
 
 ## Última Actualización
 - Fecha: March 13, 2026
-- Estado: Módulo de Ajustes estilo Element X integrado (perfil, privacidad, apariencia, sesión) con navegación y tema dinámico.
+- Estado: Ajustes cerrados end-to-end con cambio de contraseña, usuarios bloqueados y reporte de problemas sobre backend Supabase.
 
 ---
 
@@ -123,16 +123,32 @@ Este documento registra el progreso, las decisiones clave y los próximos pasos 
 *   **Cambio:** Añadido diálogo de confirmación para eliminación de cuenta (guardrail UX).
 *   **Nota:** La eliminación real de cuenta queda pendiente de endpoint/backoffice seguro para evitar operaciones destructivas desde cliente.
 
+### Etapa 9: Cierre de Funciones de Ajustes (Completada)
+
+#### 9.1 Navegación y Pantallas Reales
+*   **Cambio:** Añadidas rutas y pantallas para `Cambiar contraseña`, `Usuarios bloqueados`, `Reportar un problema` y `Acerca de`.
+*   **Cambio:** `SettingsScreen` dejó de usar placeholders y ahora navega a flujos funcionales.
+
+#### 9.2 Contraseña y Soporte
+*   **Cambio:** Implementado flujo de actualización de contraseña vía `supabase.auth.updateUser`.
+*   **Cambio:** Implementado formulario de reporte y persistencia en tabla `support_reports`.
+
+#### 9.3 Privacidad (Bloqueados)
+*   **Cambio:** Implementada lectura y desbloqueo de usuarios bloqueados desde tabla `blocked_users`.
+*   **Cambio:** Añadidos métodos de dominio/datos (`getBlockedUsers`, `blockUser`, `unblockUser`).
+
+#### 9.4 Backend Supabase
+*   **Cambio:** Nueva migración `20260313193000_add_blocked_users_and_support_reports.sql` con tablas, índices y políticas RLS.
+*   **Nota operativa:** `supabase db push` pendiente en remoto por credenciales de `postgres` no válidas en pooler; migración lista para ejecutar cuando se confirme password/DB URL.
+
 ---
 
 ## Próximos Pasos (Bloque Consolidado)
 
-1.  **Cerrar placeholders de Settings:**
-    *   Implementar flujo real de cambio de contraseña con Supabase Auth.
-    *   Implementar pantalla de usuarios bloqueados con backend real (tabla/políticas).
-    *   Añadir flujo de reporte de problema (mailto/API de soporte).
-2.  **Persistencia de preferencias UX:**
+1.  **Persistencia de preferencias UX:**
     *   Guardar `ThemeOption` y toggles de settings en almacenamiento local para restauración al reiniciar.
+2.  **Bloqueo desde contexto de usuario:**
+    *   Exponer acción de bloquear usuario desde perfil/chat para alimentar la pantalla de bloqueados.
 3.  **Gestión de Archivos Avanzada:**
     *   Implementar un selector de archivos real (Galería/Cámara) para Android e iOS.
 4.  **Calidad y Operación:**

@@ -65,6 +65,10 @@ class ChatRepositoryImpl(
         }
     }
 
+    override suspend fun updatePassword(newPassword: String) = withContext(Dispatchers.IO) {
+        remote.updatePassword(newPassword)
+    }
+
     override suspend fun signOut() = withContext(Dispatchers.IO) {
         val signOutFailure = runCatching {
             remote.signOut()
@@ -111,6 +115,30 @@ class ChatRepositoryImpl(
             targetProfile = profile,
             createFailureMessage = "No pudimos crear el chat. Intenta de nuevo.",
         )
+    }
+
+    override suspend fun getBlockedUsers(): List<Profile> = withContext(Dispatchers.IO) {
+        val myId = remote.getCurrentUserId() ?: return@withContext emptyList()
+        val blockedIds = remote.getBlockedUserIds(myId)
+        blockedIds.mapNotNull { blockedId ->
+            getProfile(blockedId)
+        }
+    }
+
+    override suspend fun blockUser(profileId: String) = withContext(Dispatchers.IO) {
+        val myId = remote.getCurrentUserId() ?: error("No autenticado")
+        if (profileId == myId) return@withContext
+        remote.blockUser(userId = myId, blockedUserId = profileId)
+    }
+
+    override suspend fun unblockUser(profileId: String) = withContext(Dispatchers.IO) {
+        val myId = remote.getCurrentUserId() ?: error("No autenticado")
+        remote.unblockUser(userId = myId, blockedUserId = profileId)
+    }
+
+    override suspend fun submitSupportReport(message: String) = withContext(Dispatchers.IO) {
+        val myId = remote.getCurrentUserId() ?: error("No autenticado")
+        remote.submitSupportReport(userId = myId, message = message)
     }
 
     private suspend fun startOrOpenDirectChat(

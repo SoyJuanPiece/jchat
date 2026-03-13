@@ -26,6 +26,10 @@ import org.koin.compose.viewmodel.koinViewModel
 fun SettingsScreen(
     onNavigateBack: () -> Unit,
     onNavigateToProfile: () -> Unit,
+    onNavigateToChangePassword: () -> Unit,
+    onNavigateToBlockedUsers: () -> Unit,
+    onNavigateToAbout: () -> Unit,
+    onNavigateToReportProblem: () -> Unit,
     onThemeChanged: (ThemeOption) -> Unit,
     viewModel: SettingsViewModel = koinViewModel(),
 ) {
@@ -130,7 +134,7 @@ fun SettingsScreen(
                     icon = Icons.Default.Block,
                     title = "Usuarios bloqueados",
                     subtitle = "Gestiona los usuarios que has bloqueado",
-                    onClick = { /* TODO: Blocked users screen */ },
+                    onClick = onNavigateToBlockedUsers,
                 )
             }
 
@@ -151,7 +155,7 @@ fun SettingsScreen(
                     icon = Icons.Default.Lock,
                     title = "Cambiar contraseña",
                     subtitle = "Actualiza tu contraseña de acceso",
-                    onClick = { /* TODO: Change password screen */ },
+                    onClick = onNavigateToChangePassword,
                 )
             }
 
@@ -163,7 +167,7 @@ fun SettingsScreen(
                     icon = Icons.Default.Info,
                     title = "Acerca de JChat",
                     subtitle = "Versión 1.0.0 · Licencias · Fuente",
-                    onClick = { /* TODO: About screen */ },
+                    onClick = onNavigateToAbout,
                 )
             }
 
@@ -172,7 +176,7 @@ fun SettingsScreen(
                     icon = Icons.Default.BugReport,
                     title = "Reportar un problema",
                     subtitle = "Envía un informe de error al equipo",
-                    onClick = { /* TODO: Bug report */ },
+                    onClick = onNavigateToReportProblem,
                 )
             }
 

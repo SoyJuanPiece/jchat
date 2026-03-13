@@ -26,6 +26,9 @@ interface IChatRepository {
     /** Updates the current user's profile locally and remotely. */
     suspend fun updateProfile(displayName: String, avatarUrl: String?)
 
+    /** Updates the current user's password in Supabase Auth. */
+    suspend fun updatePassword(newPassword: String)
+
     /** Signs out the current user and clears local session data. */
     suspend fun signOut()
 
@@ -44,6 +47,18 @@ interface IChatRepository {
      * Returns the new chatId.
      */
     suspend fun startChatWithUser(profile: Profile): String
+
+    /** Returns the list of users blocked by the current account. */
+    suspend fun getBlockedUsers(): List<Profile>
+
+    /** Blocks [profileId] for the current account. */
+    suspend fun blockUser(profileId: String)
+
+    /** Unblocks [profileId] for the current account. */
+    suspend fun unblockUser(profileId: String)
+
+    /** Sends a support report for the current account. */
+    suspend fun submitSupportReport(message: String)
 
     // ─── Chats ────────────────────────────────────────────────────────────────
 

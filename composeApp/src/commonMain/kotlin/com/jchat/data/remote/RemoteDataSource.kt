@@ -68,6 +68,13 @@ data class ChatParticipantDto(
     @SerialName("profile_id") val profileId: String,
 )
 
+@Serializable
+data class BlockedUserDto(
+    @SerialName("user_id") val userId: String,
+    @SerialName("blocked_user_id") val blockedUserId: String,
+    @SerialName("created_at") val createdAt: String,
+)
+
 // ─── Remote Data Source ───────────────────────────────────────────────────────
 
 /**
@@ -109,6 +116,12 @@ class RemoteDataSource(private val supabase: SupabaseClient) {
 
     suspend fun signOut() {
         supabase.auth.signOut()
+    }
+
+    suspend fun updatePassword(newPassword: String) {
+        supabase.auth.updateUser {
+            password = newPassword
+        }
     }
 
     // ─── Profiles ─────────────────────────────────────────────────────────────
@@ -256,6 +269,43 @@ class RemoteDataSource(private val supabase: SupabaseClient) {
         )
         
         return chatId
+    }
+
+    suspend fun getBlockedUserIds(userId: String): List<String> =
+        supabase.from("blocked_users")
+            .select {
+                filter { eq("user_id", userId) }
+            }
+            .decodeList<BlockedUserDto>()
+            .map { it.blockedUserId }
+
+    suspend fun blockUser(userId: String, blockedUserId: String) {
+        if (userId == blockedUserId) return
+        supabase.from("blocked_users").insert(
+            buildJsonObject {
+                put("user_id", userId)
+                put("blocked_user_id", blockedUserId)
+            }
+        )
+    }
+
+    suspend fun unblockUser(userId: String, blockedUserId: String) {
+        supabase.from("blocked_users").delete {
+            filter {
+                eq("user_id", userId)
+                eq("blocked_user_id", blockedUserId)
+            }
+        }
+    }
+
+    suspend fun submitSupportReport(userId: String, message: String) {
+        supabase.from("support_reports").insert(
+            buildJsonObject {
+                put("user_id", userId)
+                put("message", message)
+                put("client", "jchat-kmp")
+            }
+        )
     }
 
     // ─── Messages ─────────────────────────────────────────────────────────────

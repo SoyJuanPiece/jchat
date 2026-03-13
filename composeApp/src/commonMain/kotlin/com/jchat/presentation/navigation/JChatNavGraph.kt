@@ -12,6 +12,10 @@ import com.jchat.presentation.AuthScreen
 import com.jchat.presentation.conversation.ConversationScreen
 import com.jchat.presentation.profile.ProfileScreen
 import com.jchat.presentation.home.HomeScreen
+import com.jchat.presentation.settings.AboutScreen
+import com.jchat.presentation.settings.BlockedUsersScreen
+import com.jchat.presentation.settings.ChangePasswordScreen
+import com.jchat.presentation.settings.ReportProblemScreen
 import com.jchat.presentation.settings.SettingsScreen
 import com.jchat.presentation.settings.ThemeOption
 import org.koin.compose.koinInject
@@ -22,6 +26,10 @@ private const val ROUTE_HOME = "home"
 private const val ROUTE_CONVERSATION = "conversation/{chatId}"
 private const val ROUTE_PROFILE = "profile"
 private const val ROUTE_SETTINGS = "settings"
+private const val ROUTE_CHANGE_PASSWORD = "settings/change-password"
+private const val ROUTE_BLOCKED_USERS = "settings/blocked-users"
+private const val ROUTE_ABOUT = "settings/about"
+private const val ROUTE_REPORT_PROBLEM = "settings/report-problem"
 private const val ARG_CHAT_ID = "chatId"
 
 /**
@@ -78,7 +86,43 @@ fun JChatNavGraph(
                 onNavigateToProfile = {
                     navController.navigate(ROUTE_PROFILE)
                 },
+                onNavigateToChangePassword = {
+                    navController.navigate(ROUTE_CHANGE_PASSWORD)
+                },
+                onNavigateToBlockedUsers = {
+                    navController.navigate(ROUTE_BLOCKED_USERS)
+                },
+                onNavigateToAbout = {
+                    navController.navigate(ROUTE_ABOUT)
+                },
+                onNavigateToReportProblem = {
+                    navController.navigate(ROUTE_REPORT_PROBLEM)
+                },
                 onThemeChanged = onThemeChanged,
+            )
+        }
+
+        composable(ROUTE_CHANGE_PASSWORD) {
+            ChangePasswordScreen(
+                onNavigateBack = { navController.popBackStack() },
+            )
+        }
+
+        composable(ROUTE_BLOCKED_USERS) {
+            BlockedUsersScreen(
+                onNavigateBack = { navController.popBackStack() },
+            )
+        }
+
+        composable(ROUTE_ABOUT) {
+            AboutScreen(
+                onNavigateBack = { navController.popBackStack() },
+            )
+        }
+
+        composable(ROUTE_REPORT_PROBLEM) {
+            ReportProblemScreen(
+                onNavigateBack = { navController.popBackStack() },
             )
         }
 

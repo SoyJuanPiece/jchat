@@ -54,6 +54,28 @@ CREATE TABLE IF NOT EXISTS public.messages (
 
 ALTER TABLE public.messages ENABLE ROW LEVEL SECURITY;
 
+-- 5. BLOCKED USERS TABLE
+CREATE TABLE IF NOT EXISTS public.blocked_users (
+    user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
+    blocked_user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    PRIMARY KEY (user_id, blocked_user_id),
+    CONSTRAINT blocked_users_no_self_block CHECK (user_id <> blocked_user_id)
+);
+
+ALTER TABLE public.blocked_users ENABLE ROW LEVEL SECURITY;
+
+-- 6. SUPPORT REPORTS TABLE
+CREATE TABLE IF NOT EXISTS public.support_reports (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
+    message TEXT NOT NULL,
+    client TEXT NOT NULL DEFAULT 'jchat-kmp',
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE public.support_reports ENABLE ROW LEVEL SECURITY;
+
 -- ─── ROW LEVEL SECURITY (RLS) POLICIES ───
 
 -- Profiles: Anyone can read profiles, but only owners can update theirs.
@@ -93,6 +115,21 @@ CREATE POLICY "Users can insert messages into their chats" ON public.messages
             WHERE chat_id = public.messages.chat_id AND profile_id = auth.uid()
         )
     );
+
+CREATE POLICY "Users can view own blocked users" ON public.blocked_users
+    FOR SELECT USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert own blocked users" ON public.blocked_users
+    FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete own blocked users" ON public.blocked_users
+    FOR DELETE USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert own support reports" ON public.support_reports
+    FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can view own support reports" ON public.support_reports
+    FOR SELECT USING (auth.uid() = user_id);
 
 -- ─── FUNCTIONS & TRIGGERS ───
 
