@@ -24,6 +24,7 @@ sealed interface ProfileIntent {
     data class UpdateDisplayName(val name: String) : ProfileIntent
     data class UpdateAvatarUrl(val url: String?) : ProfileIntent
     data object SaveProfile : ProfileIntent
+    data object SignOut : ProfileIntent
     data object DismissMessages : ProfileIntent
 }
 
@@ -55,7 +56,14 @@ class ProfileViewModel(
             is ProfileIntent.UpdateDisplayName -> _state.update { it.copy(displayName = intent.name) }
             is ProfileIntent.UpdateAvatarUrl -> _state.update { it.copy(avatarUrl = intent.url) }
             ProfileIntent.SaveProfile -> saveProfile()
+            ProfileIntent.SignOut -> signOut()
             ProfileIntent.DismissMessages -> _state.update { it.copy(successMessage = null, errorMessage = null) }
+        }
+    }
+
+    private fun signOut() {
+        viewModelScope.launch {
+            repository.signOut()
         }
     }
 

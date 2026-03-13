@@ -73,14 +73,12 @@ class RemoteDataSource(private val supabase: SupabaseClient) {
         (status as? SessionStatus.Authenticated)?.session?.user?.id
     }
 
-    /** Returns the unique ID of the currently signed-in user, if any. */
     fun getCurrentUserId(): String? = supabase.auth.currentUserOrNull()?.id
 
-    /** Returns the email of the currently signed-in user, if any. */
     fun getCurrentUserEmail(): String? = supabase.auth.currentUserOrNull()?.email
 
     suspend fun signIn(email: String, password: String) {
-        // Uso directo de la API de auth sin extensiones externas que fallen
+        // En 3.x signInWith es un método de Auth, no necesita import de extensión
         supabase.auth.signInWith(Email) {
             this.email = email
             this.password = password
@@ -123,9 +121,7 @@ class RemoteDataSource(private val supabase: SupabaseClient) {
                 }
             }
         ) {
-            filter {
-                eq("id", userId)
-            }
+            filter { eq("id", userId) }
         }
     }
 
@@ -140,24 +136,14 @@ class RemoteDataSource(private val supabase: SupabaseClient) {
             }
             .decodeList<MessageDto>()
 
-    /**
-     * Sends a message to Supabase and returns the persisted [MessageDto].
-     */
     suspend fun sendMessage(message: MessageDto): MessageDto =
         supabase.from("messages")
             .insert(message) { select() }
             .decodeSingle<MessageDto>()
 
-    /**
-     * Subscribes to real-time INSERT events for [chatId].
-     * Returns a [Flow] of incoming [MessageDto]s from the Realtime channel.
-     */
     fun subscribeToMessages(chatId: String): Flow<MessageDto> = flow {
         val channel = supabase.channel("messages:$chatId")
         activeChannels[chatId] = channel
-
-        // Subscribe to the channel before connecting so that the listener
-        // is registered before any incoming events can arrive.
         channel.subscribe()
         supabase.realtime.connect()
 
@@ -180,18 +166,13 @@ class RemoteDataSource(private val supabase: SupabaseClient) {
 
     // ─── Storage ──────────────────────────────────────────────────────────────
 
-    /**
-     * Uploads a local file to Supabase Storage and reports progress via a [Flow].
-     */
     fun uploadMedia(
         bucket: String,
         remotePath: String,
         data: ByteArray,
     ): Flow<String> = flow {
         val storageRef = supabase.storage[bucket]
-        storageRef.upload(remotePath, data) {
-            upsert = true
-        }
+        storageRef.upload(remotePath, data) { upsert = true }
         val publicUrl = storageRef.publicUrl(remotePath)
         emit(publicUrl)
     }

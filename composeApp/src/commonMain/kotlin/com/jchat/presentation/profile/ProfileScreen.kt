@@ -114,7 +114,7 @@ fun ProfileScreen(
 
                 // Username (Read-only)
                 OutlinedTextField(
-                    value = state.profile?.username ?: "",
+                    value = state.profile?.username ?: "Loading...",
                     onValueChange = {},
                     label = { Text("Username") },
                     modifier = Modifier.fillMaxWidth(),
@@ -122,13 +122,15 @@ fun ProfileScreen(
                     enabled = false
                 )
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(32.dp))
                 
-                Text(
-                    text = "This is how you appear to others. Your username is unique and cannot be changed.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                Button(
+                    onClick = { viewModel.onIntent(ProfileIntent.SignOut) },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Sign Out")
+                }
             }
         }
     }

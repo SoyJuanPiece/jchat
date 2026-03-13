@@ -65,6 +65,11 @@ class ChatRepositoryImpl(
         }
     }
 
+    override suspend fun signOut() = withContext(Dispatchers.IO) {
+        remote.signOut()
+        // In a more complete app, we would also clear the local database here.
+    }
+
     // ─── Chats ────────────────────────────────────────────────────────────────
 
     override fun observeChats(): Flow<List<Chat>> = local.observeChats()

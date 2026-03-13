@@ -26,6 +26,9 @@ interface IChatRepository {
     /** Updates the current user's profile locally and remotely. */
     suspend fun updateProfile(displayName: String, avatarUrl: String?)
 
+    /** Signs out the current user and clears local session data. */
+    suspend fun signOut()
+
     // ─── Chats ────────────────────────────────────────────────────────────────
 
     /**

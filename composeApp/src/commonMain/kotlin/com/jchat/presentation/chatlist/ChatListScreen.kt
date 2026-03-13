@@ -154,11 +154,12 @@ private fun ChatItem(
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = chat.participant.displayName,
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.SemiBold,
+                    text = chat.participant.displayName.ifBlank { chat.participant.username },
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f),
@@ -166,15 +167,18 @@ private fun ChatItem(
                 Text(
                     text = chat.lastMessageAt?.let { formatTimestamp(it) } ?: "",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = if (chat.unreadCount > 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontWeight = if (chat.unreadCount > 0) FontWeight.Bold else FontWeight.Normal
                 )
             }
+            Spacer(modifier = Modifier.height(2.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = chat.lastMessagePreview ?: "",
+                    text = chat.lastMessagePreview ?: "No messages yet",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
@@ -182,10 +186,19 @@ private fun ChatItem(
                     modifier = Modifier.weight(1f),
                 )
                 if (chat.unreadCount > 0) {
-                    Badge {
-                        Text(
-                            text = if (chat.unreadCount > 99) "99+" else chat.unreadCount.toString(),
-                        )
+                    Surface(
+                        color = MaterialTheme.colorScheme.primary,
+                        shape = CircleShape,
+                        modifier = Modifier.size(22.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Text(
+                                text = if (chat.unreadCount > 99) "99+" else chat.unreadCount.toString(),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onPrimary,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
                     }
                 }
             }
