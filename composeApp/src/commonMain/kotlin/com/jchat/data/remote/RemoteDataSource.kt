@@ -8,8 +8,8 @@ import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.auth.status.SessionStatus
 import io.github.jan.supabase.auth.providers.builtin.Email
-import io.github.jan.supabase.auth.signInWith
-import io.github.jan.supabase.auth.signUpWith
+import io.github.jan.supabase.auth.providers.signInWith
+import io.github.jan.supabase.auth.providers.signUpWith
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.postgrest.query.filter.FilterOperator
