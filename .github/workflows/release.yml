@@ -1,7 +1,10 @@
 name: Release
 
 on:
+  workflow_dispatch:
   push:
+    branches:
+      - main
     tags:
       - 'v*.*.*'
 
@@ -51,6 +54,7 @@ jobs:
         run: gradle :composeApp:assembleRelease :composeApp:bundleRelease
 
       - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v1
         with:
           # Publish release immediately when tag workflow succeeds.
