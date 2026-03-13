@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.jchat.domain.model.Chat
 import com.jchat.domain.model.OnlineStatus
+import com.jchat.domain.model.Profile
 import org.koin.compose.viewmodel.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -138,15 +139,19 @@ private fun EmptyState(isSearch: Boolean) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun NewChatDialog(
+    query: String,
+    searchResults: List<Profile>,
+    isSearching: Boolean,
+    isCreatingChat: Boolean,
+    onQueryChange: (String) -> Unit,
+    onUserSelect: (Profile) -> Unit,
     onDismiss: () -> Unit,
-    onConfirm: (String) -> Unit,
-    isCreating: Boolean
 ) {
-    var username by remember { mutableStateOf("") }
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         dragHandle = { BottomSheetDefaults.DragHandle() },
         containerColor = MaterialTheme.colorScheme.surface,
+        modifier = Modifier.fillMaxHeight(0.85f),
     ) {
         Column(
             modifier = Modifier
@@ -161,45 +166,124 @@ private fun NewChatDialog(
             )
             Spacer(modifier = Modifier.height(6.dp))
             Text(
-                text = "Busca por @username o por nombre visible.",
+                text = "Busca por @username o nombre visible.",
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 style = MaterialTheme.typography.bodyMedium,
             )
             Spacer(modifier = Modifier.height(16.dp))
 
             OutlinedTextField(
-                value = username,
-                onValueChange = { username = it },
-                label = { Text("Usuario") },
+                value = query,
+                onValueChange = onQueryChange,
+                label = { Text("Buscar usuario") },
                 placeholder = { Text("@juanpiece o Juan") },
                 singleLine = true,
-                leadingIcon = {
-                    Icon(Icons.Default.Search, contentDescription = null)
+                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                trailingIcon = {
+                    if (isSearching) {
+                        CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                    }
                 },
                 modifier = Modifier.fillMaxWidth(),
-                supportingText = {
-                    Text("Tip: no importa mayusculas/minusculas")
-                }
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
-            Button(
-                onClick = { onConfirm(username.trim()) },
-                enabled = username.isNotBlank() && !isCreating,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(50.dp),
-            ) {
-                if (isCreating) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(20.dp),
-                        strokeWidth = 2.dp,
-                    )
-                } else {
-                    Text("Buscar e iniciar chat")
+            when {
+                query.trim().length < 2 -> {
+                    Box(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            text = "Escribe al menos 2 caracteres para buscar",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+                !isSearching && searchResults.isEmpty() -> {
+                    Box(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            text = "No encontramos a \"${query.trim()}\"",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+                else -> {
+                    LazyColumn {
+                        items(
+                            items = searchResults,
+                            key = { it.id },
+                        ) { profile ->
+                            UserResultRow(
+                                profile = profile,
+                                isEnabled = !isCreatingChat,
+                                onClick = { onUserSelect(profile) },
+                            )
+                            HorizontalDivider()
+                        }
+                    }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun UserResultRow(
+    profile: Profile,
+    isEnabled: Boolean,
+    onClick: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(enabled = isEnabled, onClick = onClick)
+            .padding(horizontal = 4.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(44.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.primaryContainer),
+            contentAlignment = Alignment.Center,
+        ) {
+            if (profile.avatarUrl != null) {
+                AsyncImage(
+                    model = profile.avatarUrl,
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize().clip(CircleShape),
+                )
+            } else {
+                Text(
+                    text = profile.displayName.take(1).uppercase(),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                )
+            }
+        }
+        Spacer(modifier = Modifier.width(12.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = profile.displayName.ifBlank { profile.username },
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = "@${profile.username}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
     }
 }

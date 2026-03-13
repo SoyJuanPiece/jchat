@@ -79,6 +79,13 @@ class ChatRepositoryImpl(
         }
     }
 
+    override suspend fun searchUsers(query: String): List<Profile> = withContext(Dispatchers.IO) {
+        val myId = remote.getCurrentUserId() ?: return@withContext emptyList()
+        val normalized = query.trim().removePrefix("@").trim()
+        if (normalized.length < 2) return@withContext emptyList()
+        remote.searchUsers(normalized, excludeUserId = myId).map { it.toDomain() }
+    }
+
     override suspend fun startChat(username: String): String = withContext(Dispatchers.IO) {
         val myId = remote.getCurrentUserId() ?: error("Not authenticated")
         val query = username.trim().removePrefix("@").trim()
@@ -103,6 +110,25 @@ class ChatRepositoryImpl(
             Chat(
                 id = chatId,
                 participant = targetUser.toDomain(),
+                createdAt = Clock.System.now()
+            )
+        )
+        chatId
+    }
+
+    override suspend fun startChatWithUser(profile: Profile): String = withContext(Dispatchers.IO) {
+        val myId = remote.getCurrentUserId() ?: error("No autenticado")
+        if (profile.id == myId) error("No puedes iniciar un chat contigo mismo")
+        val chatId = runCatching {
+            remote.createChat(myId, profile.id)
+        }.getOrElse { cause ->
+            throw IllegalStateException("No pudimos crear el chat. Intenta de nuevo.", cause)
+        }
+        local.upsertProfile(profile)
+        local.upsertChat(
+            Chat(
+                id = chatId,
+                participant = profile,
                 createdAt = Clock.System.now()
             )
         )

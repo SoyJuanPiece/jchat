@@ -29,8 +29,21 @@ interface IChatRepository {
     /** Signs out the current user and clears local session data. */
     suspend fun signOut()
 
+    /**
+     * Searches for users matching [query] (username or display name), excluding the current user.
+     * Returns up to 20 ranked results. Returns empty list for blank or very short queries.
+     */
+    suspend fun searchUsers(query: String): List<Profile>
+
     /** Starts a new chat with the user matching [username]. Returns the new chatId. */
     suspend fun startChat(username: String): String
+
+    /**
+     * Starts a chat with a user already found via [searchUsers].
+     * Skips the remote search — use this when the user was selected from live results.
+     * Returns the new chatId.
+     */
+    suspend fun startChatWithUser(profile: Profile): String
 
     // ─── Chats ────────────────────────────────────────────────────────────────
 

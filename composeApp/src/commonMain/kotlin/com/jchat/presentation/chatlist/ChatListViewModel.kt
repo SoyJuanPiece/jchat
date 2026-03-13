@@ -3,17 +3,16 @@ package com.jchat.presentation.chatlist
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.jchat.domain.model.Chat
+import com.jchat.domain.model.Profile
 import com.jchat.domain.repository.IChatRepository
-import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.catch
-import kotlinx.coroutines.flow.receiveAsFlow
-import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -28,6 +27,10 @@ data class ChatListState(
     val isLoading: Boolean = true,
     val isCreatingChat: Boolean = false,
     val errorMessage: String? = null,
+    // ─── User search (new chat dialog) ───────────────────────────────────────
+    val userSearchQuery: String = "",
+    val userSearchResults: List<Profile> = emptyList(),
+    val isSearchingUser: Boolean = false,
 )
 
 /** User-triggered intents for the chat-list screen. */
@@ -41,9 +44,18 @@ sealed interface ChatListIntent {
     /** User dismisses the error snackbar. */
     data object DismissError : ChatListIntent
 
+    /** Filters the visible chat list by name/username. */
     data class UpdateSearchQuery(val query: String) : ChatListIntent
     data class ToggleSearchMode(val enabled: Boolean) : ChatListIntent
-    data class CreateChat(val username: String) : ChatListIntent
+
+    /** User types in the "new chat" search field — triggers live user search. */
+    data class UpdateUserSearchQuery(val query: String) : ChatListIntent
+
+    /** User taps a result row — start/open chat with that profile. */
+    data class SelectUser(val profile: Profile) : ChatListIntent
+
+    /** User closes the "new chat" dialog — reset search state. */
+    data object ClearUserSearch : ChatListIntent
 }
 
 /** One-shot navigation events emitted by the ViewModel. */
@@ -95,9 +107,38 @@ class ChatListViewModel(
         }
     }
 
-    private fun createChat(username: String) {
+
+
+    private fun observeChats() {
+        // Cancel any existing collector before starting a new one to avoid duplicates.
+        observeJob?.cancel()
+        observeJob = viewModelScope.launch {
+            _state.update { it.copy(isLoading = true, errorMessage = null) }
+            repository.observeChats()
+                .catch { e ->
+                    _state.update { it.copy(isLoading = false, errorMessage = e.message) }
+                }
+                .collect { chats ->
+                    _state.update {
+                        it.copy(
+                            chats = chats, 
+                            filteredChats = if (it.searchQuery.isBlank()) chats else chats.filter { c ->
+                                c.participant.displayName.contains(it.searchQuery, ignoreCase = true) || 
+                                c.participant.username.contains(it.searchQuery, ignoreCase = true)
+                            },
+                            isLoading = false
+                        )
+                    }
+                }
+        }
+    }
+
+    private fun navigateToConversation(chatId: String) {
         viewModelScope.launch {
-            val normalized = username.trim().removePrefix("@").trim()
+            _events.emit(ChatListEvent.NavigateToConversation(chatId))
+        }
+    }
+}
             if (normalized.isBlank()) {
                 _state.update { it.copy(errorMessage = "Escribe un username o nombre para buscar") }
                 return@launch
