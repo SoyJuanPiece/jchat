@@ -139,7 +139,7 @@ Este documento registra el progreso, las decisiones clave y los próximos pasos 
 
 #### 9.4 Backend Supabase
 *   **Cambio:** Nueva migración `20260313193000_add_blocked_users_and_support_reports.sql` con tablas, índices y políticas RLS.
-*   **Nota operativa:** `supabase db push` pendiente en remoto por credenciales de `postgres` no válidas en pooler; migración lista para ejecutar cuando se confirme password/DB URL.
+*   **Cambio:** Migración aplicada exitosamente en remoto y verificada en `migration list`.
 
 ---
 
