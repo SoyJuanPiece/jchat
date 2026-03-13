@@ -13,6 +13,7 @@ import com.jchat.presentation.AuthViewModel
 import com.jchat.presentation.chatlist.ChatListViewModel
 import com.jchat.presentation.conversation.ConversationViewModel
 import com.jchat.presentation.profile.ProfileViewModel
+import com.jchat.presentation.settings.SettingsViewModel
 import org.koin.core.module.dsl.factoryOf
 import org.koin.core.module.dsl.singleOf
 import org.koin.dsl.bind
@@ -43,6 +44,7 @@ val presentationModule = module {
     factoryOf(::AuthViewModel)
     factoryOf(::ChatListViewModel)
     factoryOf(::ProfileViewModel)
+    factoryOf(::SettingsViewModel)
     factory { (chatId: String) -> ConversationViewModel(chatId, get()) }
 }
 

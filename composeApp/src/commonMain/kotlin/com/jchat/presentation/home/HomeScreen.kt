@@ -22,7 +22,7 @@ import org.koin.compose.viewmodel.koinViewModel
 @Composable
 fun HomeScreen(
     onNavigateToConversation: (String) -> Unit,
-    onNavigateToProfile: () -> Unit,
+    onNavigateToSettings: () -> Unit,
     onSignOut: () -> Unit,
     viewModel: ChatListViewModel = koinViewModel()
 ) {
@@ -72,15 +72,15 @@ fun HomeScreen(
                             IconButton(onClick = { showMenu = true }) { Icon(Icons.Default.MoreVert, contentDescription = "More") }
                             DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
                                 DropdownMenuItem(
-                                    text = { Text("Profile") },
+                                    text = { Text("Ajustes") },
                                     onClick = {
                                         showMenu = false
-                                        onNavigateToProfile()
+                                        onNavigateToSettings()
                                     },
-                                    leadingIcon = { Icon(Icons.Default.AccountCircle, contentDescription = null) }
+                                    leadingIcon = { Icon(Icons.Default.Settings, contentDescription = null) }
                                 )
                                 DropdownMenuItem(
-                                    text = { Text("Sign Out") },
+                                    text = { Text("Cerrar sesión") },
                                     onClick = {
                                         showMenu = false
                                         onSignOut()

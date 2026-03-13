@@ -11,6 +11,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
+import com.jchat.presentation.settings.ThemeOption
 
 private val JChatLightColors = lightColorScheme(
     primary = Color(0xFF0F6A5E),
@@ -91,9 +92,14 @@ private val JChatTypography = Typography(
 
 @Composable
 fun JChatTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
+    themeOption: ThemeOption = ThemeOption.System,
     content: @Composable () -> Unit,
 ) {
+    val darkTheme = when (themeOption) {
+        ThemeOption.System -> isSystemInDarkTheme()
+        ThemeOption.Dark -> true
+        ThemeOption.Light -> false
+    }
     MaterialTheme(
         colorScheme = if (darkTheme) JChatDarkColors else JChatLightColors,
         typography = JChatTypography,
