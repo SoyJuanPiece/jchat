@@ -6,6 +6,9 @@ import com.jchat.domain.model.MessageStatus
 import com.jchat.domain.model.Profile
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.auth
+import io.github.jan.supabase.auth.providers.builtin.Email
+import io.github.jan.supabase.auth.providers.signInWith
+import io.github.jan.supabase.auth.providers.signUpWith
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.postgrest.query.filter.FilterOperator
@@ -18,10 +21,13 @@ import io.github.jan.supabase.storage.storage
 import io.github.jan.supabase.storage.upload
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.map
 import kotlinx.datetime.Instant
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.put
+import kotlinx.serialization.json.buildJsonObject
 
 // Private Json instance for manual decoding
 private val json = Json { ignoreUnknownKeys = true }
@@ -63,11 +69,36 @@ class RemoteDataSource(private val supabase: SupabaseClient) {
 
     // ─── Auth ─────────────────────────────────────────────────────────────────
 
+    /** A Flow that emits the current user's ID whenever the auth session changes. */
+    val authSessionFlow: Flow<String?> = supabase.auth.sessionFlow.map { it?.user?.id }
+
     /** Returns the unique ID of the currently signed-in user, if any. */
     fun getCurrentUserId(): String? = supabase.auth.currentUserOrNull()?.id
 
     /** Returns the email of the currently signed-in user, if any. */
     fun getCurrentUserEmail(): String? = supabase.auth.currentUserOrNull()?.email
+
+    suspend fun signIn(email: String, password: String) {
+        supabase.auth.signInWith(Email) {
+            this.email = email
+            this.password = password
+        }
+    }
+
+    suspend fun signUp(email: String, password: String, username: String, displayName: String) {
+        supabase.auth.signUpWith(Email) {
+            this.email = email
+            this.password = password
+            data = kotlinx.serialization.json.buildJsonObject {
+                put("username", username)
+                put("display_name", displayName)
+            }
+        }
+    }
+
+    suspend fun signOut() {
+        supabase.auth.signOut()
+    }
 
     // ─── Profiles ─────────────────────────────────────────────────────────────
 
