@@ -185,16 +185,13 @@ class ChatRepositoryImpl(
         }
         realtimeJobs[chatId] = job
     }
+override suspend fun unsubscribeFromRealtimeMessages(chatId: String) {
+    realtimeJobs[chatId]?.cancel()
+    realtimeJobs.remove(chatId)
+    remote.unsubscribeFromMessages(chatId)
+}
 
-    override suspend fun unsubscribeFromRealtimeMessages(chatId: String) {
-        realtimeJobs[chatId]?.cancel()
-        realtimeJobs.remove(chatId)
-        remote.unsubscribeFromMessages(chatId)
-    }
-
-    private suspend fun simulateIncomingMessage(chatId: String, content: String) {
-        // Obsoleto - Usando Supabase Realtime
-    }
+/**
 
     override fun sendMediaMessage(
         chatId: String,

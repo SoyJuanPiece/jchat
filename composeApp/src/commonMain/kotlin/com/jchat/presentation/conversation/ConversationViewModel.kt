@@ -37,9 +37,6 @@ sealed interface ConversationIntent {
     /** User tapped "Send" with a text message. */
     data object SendTextMessage : ConversationIntent
 
-    /** User tapped to send a mock image for testing. */
-    data object SendMockImage : ConversationIntent
-
     /** User selected a media file to send. */
     data class SendMediaMessage(
         val localPath: String,
@@ -88,7 +85,6 @@ class ConversationViewModel(
         when (intent) {
             is ConversationIntent.UpdateInput -> _state.update { it.copy(inputText = intent.text) }
             ConversationIntent.SendTextMessage -> sendText()
-            ConversationIntent.SendMockImage -> sendMockImage()
             is ConversationIntent.SendMediaMessage -> sendMedia(intent.localPath, intent.contentType)
             is ConversationIntent.DeleteMessage -> deleteMessage(intent.messageId)
             ConversationIntent.DismissError -> _state.update { it.copy(errorMessage = null) }
@@ -96,11 +92,6 @@ class ConversationViewModel(
     }
 
     // ─── Private Helpers ──────────────────────────────────────────────────────
-
-    private fun sendMockImage() {
-        // Simular el envío de una imagen para pruebas de UI
-        sendMedia("mock_image.jpg", ContentType.IMAGE)
-    }
 
     private fun loadParticipant() {
         viewModelScope.launch {
@@ -140,13 +131,6 @@ class ConversationViewModel(
                 }
                 .onSuccess {
                     _state.update { it.copy(isSending = false) }
-                    // Simular que el otro está escribiendo
-                    launch {
-                        kotlinx.coroutines.delay(1500L)
-                        _state.update { it.copy(isTyping = true) }
-                        kotlinx.coroutines.delay(2000L)
-                        _state.update { it.copy(isTyping = false) }
-                    }
                 }
         }
     }
