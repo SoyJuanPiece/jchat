@@ -22,6 +22,8 @@ data class ConversationState(
     val participantName: String = "",
     val participantAvatarUrl: String? = null,
     val participantStatus: String = "Offline",
+    val replyToMessageId: String? = null,
+    val replyToPreview: String? = null,
     val inputText: String = "",
     val isLoading: Boolean = true,
     val isSending: Boolean = false,
@@ -43,6 +45,12 @@ sealed interface ConversationIntent {
         val localPath: String,
         val contentType: ContentType,
     ) : ConversationIntent
+
+    /** User selected a message to reply. */
+    data class SetReplyTarget(val message: Message) : ConversationIntent
+
+    /** User dismissed the current reply target. */
+    data object ClearReplyTarget : ConversationIntent
 
     /** User long-pressed a message and chose "Delete". */
     data class DeleteMessage(val messageId: String) : ConversationIntent
@@ -90,6 +98,17 @@ class ConversationViewModel(
             is ConversationIntent.UpdateInput -> _state.update { it.copy(inputText = intent.text) }
             ConversationIntent.SendTextMessage -> sendText()
             is ConversationIntent.SendMediaMessage -> sendMedia(intent.localPath, intent.contentType)
+            is ConversationIntent.SetReplyTarget -> {
+                _state.update {
+                    it.copy(
+                        replyToMessageId = intent.message.id,
+                        replyToPreview = buildReplyPreview(intent.message),
+                    )
+                }
+            }
+            ConversationIntent.ClearReplyTarget -> {
+                _state.update { it.copy(replyToMessageId = null, replyToPreview = null) }
+            }
             is ConversationIntent.DeleteMessage -> deleteMessage(intent.messageId)
             is ConversationIntent.RetryFailedMessage -> retryFailedMessage(intent.messageId)
             ConversationIntent.DismissError -> _state.update { it.copy(errorMessage = null) }
@@ -131,13 +150,21 @@ class ConversationViewModel(
     }
 
     private fun sendText() {
-        val text = _state.value.inputText.trim()
+        val current = _state.value
+        val text = current.inputText.trim()
         if (text.isBlank()) return
 
-        _state.update { it.copy(inputText = "", isSending = true) }
+        _state.update { it.copy(inputText = "", isSending = true, replyToMessageId = null, replyToPreview = null) }
 
         viewModelScope.launch {
-            runCatching { repository.sendTextMessage(chatId, text) }
+            runCatching {
+                repository.sendTextMessage(
+                    chatId = chatId,
+                    content = text,
+                    replyToMessageId = current.replyToMessageId,
+                    replyPreview = current.replyToPreview,
+                )
+            }
                 .onFailure { e ->
                     _state.update { it.copy(errorMessage = e.message, isSending = false) }
                 }
@@ -176,5 +203,15 @@ class ConversationViewModel(
         viewModelScope.launch {
             repository.unsubscribeFromRealtimeMessages(chatId)
         }
+    }
+
+    private fun buildReplyPreview(message: Message): String {
+        return when (message.contentType) {
+            ContentType.TEXT -> message.content.orEmpty().trim().ifEmpty { "Message" }
+            ContentType.IMAGE -> "Photo"
+            ContentType.AUDIO -> "Audio"
+            ContentType.VIDEO -> "Video"
+            ContentType.FILE -> "File"
+        }.take(120)
     }
 }

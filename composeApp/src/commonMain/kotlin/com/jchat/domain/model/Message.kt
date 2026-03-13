@@ -12,6 +12,8 @@ data class Message(
     val contentType: ContentType = ContentType.TEXT,
     val mediaUrl: String? = null,
     val mediaLocalPath: String? = null,
+    val replyToMessageId: String? = null,
+    val replyPreview: String? = null,
     val status: MessageStatus = MessageStatus.SENDING,
     val createdAt: Instant,
     val updatedAt: Instant,

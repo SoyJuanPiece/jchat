@@ -114,7 +114,12 @@ class ChatRepositoryImpl(
     override fun observeMessages(chatId: String): Flow<List<Message>> =
         local.observeMessages(chatId)
 
-    override suspend fun sendTextMessage(chatId: String, content: String) {
+    override suspend fun sendTextMessage(
+        chatId: String,
+        content: String,
+        replyToMessageId: String?,
+        replyPreview: String?,
+    ) {
         val currentUserId = remote.getCurrentUserId()
             ?: error("User is not authenticated")
 
@@ -125,6 +130,8 @@ class ChatRepositoryImpl(
             senderId = currentUserId,
             content = content,
             contentType = ContentType.TEXT,
+            replyToMessageId = replyToMessageId,
+            replyPreview = replyPreview,
             status = MessageStatus.SENDING,
             createdAt = now,
             updatedAt = now,
@@ -153,6 +160,8 @@ class ChatRepositoryImpl(
                     content = message.content,
                     contentType = message.contentType.name,
                     mediaUrl = message.mediaUrl,
+                    replyToMessageId = message.replyToMessageId,
+                    replyPreview = message.replyPreview,
                     status = "SENT",
                     createdAt = message.createdAt.toString(),
                     updatedAt = message.updatedAt.toString()
@@ -279,6 +288,8 @@ class ChatRepositoryImpl(
                     content = null,
                     contentType = contentType.name,
                     mediaUrl = publicUrl,
+                    replyToMessageId = null,
+                    replyPreview = null,
                     status = "SENT",
                     createdAt = now.toString(),
                     updatedAt = now.toString()
@@ -330,6 +341,8 @@ class ChatRepositoryImpl(
                     content = message.content,
                     contentType = message.contentType.name,
                     mediaUrl = message.mediaUrl,
+                    replyToMessageId = message.replyToMessageId,
+                    replyPreview = message.replyPreview,
                     status = "SENT",
                     createdAt = message.createdAt.toString(),
                     updatedAt = Clock.System.now().toString(),

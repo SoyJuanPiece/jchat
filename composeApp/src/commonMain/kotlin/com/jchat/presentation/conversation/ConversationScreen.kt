@@ -1,6 +1,9 @@
 package com.jchat.presentation.conversation
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -9,6 +12,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -21,18 +25,24 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Reply
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.AttachFile
 import androidx.compose.material.icons.filled.DoneAll
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -47,24 +57,34 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.consume
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.jchat.domain.model.ContentType
 import com.jchat.domain.model.Message
 import com.jchat.domain.model.MessageStatus
 import kotlinx.datetime.Clock
+import kotlinx.coroutines.launch
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
 import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
+import kotlin.math.abs
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -77,6 +97,9 @@ fun ConversationScreen(
     val state by viewModel.state.collectAsState()
     val listState = rememberLazyListState()
     val snackbarHostState = remember { SnackbarHostState() }
+    val clipboard = LocalClipboardManager.current
+    val scope = rememberCoroutineScope()
+    var selectedMessage by remember { mutableStateOf<Message?>(null) }
 
     // Scroll to the bottom on new messages
     LaunchedEffect(viewModel.events) {
@@ -151,9 +174,11 @@ fun ConversationScreen(
                 MessageInputBar(
                     text = state.inputText,
                     isSending = state.isSending,
+                    replyPreview = state.replyToPreview,
                     onTextChange = { viewModel.onIntent(ConversationIntent.UpdateInput(it)) },
                     onSendClick = { viewModel.onIntent(ConversationIntent.SendTextMessage) },
                     onAttachClick = { /* TODO: Open file picker */ },
+                    onClearReply = { viewModel.onIntent(ConversationIntent.ClearReplyTarget) },
                 )
             }
         },
@@ -189,8 +214,42 @@ fun ConversationScreen(
                     onRetryFailedMessage = { messageId ->
                         viewModel.onIntent(ConversationIntent.RetryFailedMessage(messageId))
                     },
+                    onReplyToMessage = { message ->
+                        viewModel.onIntent(ConversationIntent.SetReplyTarget(message))
+                    },
+                    onOpenMessageActions = { message ->
+                        selectedMessage = message
+                    },
                 )
             }
+        }
+    }
+
+    selectedMessage?.let { message ->
+        ModalBottomSheet(onDismissRequest = { selectedMessage = null }) {
+            MessageActionsSheet(
+                message = message,
+                currentUserId = currentUserId,
+                onReply = {
+                    viewModel.onIntent(ConversationIntent.SetReplyTarget(message))
+                    selectedMessage = null
+                },
+                onCopy = {
+                    message.content?.let { content ->
+                        clipboard.setText(AnnotatedString(content))
+                        scope.launch { snackbarHostState.showSnackbar("Message copied") }
+                    }
+                    selectedMessage = null
+                },
+                onDelete = {
+                    viewModel.onIntent(ConversationIntent.DeleteMessage(message.id))
+                    selectedMessage = null
+                },
+                onRetry = {
+                    viewModel.onIntent(ConversationIntent.RetryFailedMessage(message.id))
+                    selectedMessage = null
+                },
+            )
         }
     }
 }
@@ -203,6 +262,8 @@ private fun MessageList(
     currentUserId: String,
     listState: androidx.compose.foundation.lazy.LazyListState,
     onRetryFailedMessage: (String) -> Unit,
+    onReplyToMessage: (Message) -> Unit,
+    onOpenMessageActions: (Message) -> Unit,
 ) {
     val conversationItems = remember(messages, currentUserId) {
         buildConversationItems(messages = messages, currentUserId = currentUserId)
@@ -238,6 +299,8 @@ private fun MessageList(
                     groupedWithPrevious = item.groupedWithPrevious,
                     groupedWithNext = item.groupedWithNext,
                     onRetryFailedMessage = onRetryFailedMessage,
+                    onReplyToMessage = onReplyToMessage,
+                    onOpenMessageActions = onOpenMessageActions,
                 )
             }
         }
@@ -246,6 +309,7 @@ private fun MessageList(
 
 // ─── Message Bubble ───────────────────────────────────────────────────────────
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun MessageBubble(
     message: Message,
@@ -253,7 +317,11 @@ private fun MessageBubble(
     groupedWithPrevious: Boolean,
     groupedWithNext: Boolean,
     onRetryFailedMessage: (String) -> Unit,
+    onReplyToMessage: (Message) -> Unit,
+    onOpenMessageActions: (Message) -> Unit,
 ) {
+    var horizontalDrag by remember(message.id) { mutableStateOf(0f) }
+
     val alignment = if (isFromCurrentUser) Alignment.CenterEnd else Alignment.CenterStart
     val bubbleColor = if (isFromCurrentUser) {
         SentBubbleColor
@@ -285,9 +353,40 @@ private fun MessageBubble(
             color = bubbleColor,
             contentColor = contentColor,
             tonalElevation = 1.dp,
-            modifier = Modifier.widthIn(max = 300.dp),
+            modifier = Modifier
+                .widthIn(max = 300.dp)
+                .offset { IntOffset(horizontalDrag.toInt(), 0) }
+                .combinedClickable(
+                    onClick = {},
+                    onLongClick = { onOpenMessageActions(message) },
+                )
+                .pointerInput(message.id) {
+                    detectHorizontalDragGestures(
+                        onHorizontalDrag = { change, dragAmount ->
+                            change.consume()
+                            horizontalDrag = (horizontalDrag + dragAmount).coerceIn(-96f, 96f)
+                        },
+                        onDragCancel = {
+                            horizontalDrag = 0f
+                        },
+                        onDragEnd = {
+                            if (abs(horizontalDrag) >= 72f) {
+                                onReplyToMessage(message)
+                            }
+                            horizontalDrag = 0f
+                        },
+                    )
+                },
         ) {
             Column(modifier = Modifier.padding(8.dp)) {
+                message.replyPreview?.takeIf { it.isNotBlank() }?.let { preview ->
+                    ReplyPreviewBlock(
+                        preview = preview,
+                        isFromCurrentUser = isFromCurrentUser,
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+                }
+
                 when (message.contentType) {
                     ContentType.TEXT -> {
                         Text(
@@ -426,15 +525,131 @@ private fun DaySeparator(label: String) {
     }
 }
 
+@Composable
+private fun ReplyPreviewBlock(
+    preview: String,
+    isFromCurrentUser: Boolean,
+) {
+    val stripeColor = if (isFromCurrentUser) {
+        MaterialTheme.colorScheme.primary
+    } else {
+        MaterialTheme.colorScheme.tertiary
+    }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+            .background(Color.Black.copy(alpha = 0.06f))
+            .padding(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            modifier = Modifier
+                .width(3.dp)
+                .height(28.dp)
+                .clip(RoundedCornerShape(999.dp))
+                .background(stripeColor),
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(
+            text = preview,
+            style = MaterialTheme.typography.bodySmall,
+            maxLines = 2,
+            color = Color.Black.copy(alpha = 0.75f),
+        )
+    }
+}
+
+@Composable
+private fun MessageActionsSheet(
+    message: Message,
+    currentUserId: String,
+    onReply: () -> Unit,
+    onCopy: () -> Unit,
+    onDelete: () -> Unit,
+    onRetry: () -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 8.dp)
+            .navigationBarsPadding(),
+    ) {
+        ActionRow(
+            icon = Icons.AutoMirrored.Filled.Reply,
+            label = "Reply",
+            onClick = onReply,
+        )
+
+        if (!message.content.isNullOrBlank()) {
+            ActionRow(
+                icon = Icons.Default.ContentCopy,
+                label = "Copy",
+                onClick = onCopy,
+            )
+        }
+
+        if (message.senderId == currentUserId && message.status == MessageStatus.FAILED) {
+            ActionRow(
+                icon = Icons.AutoMirrored.Filled.Send,
+                label = "Retry send",
+                onClick = onRetry,
+            )
+        }
+
+        if (message.senderId == currentUserId) {
+            ActionRow(
+                icon = Icons.Default.Delete,
+                label = "Delete",
+                onClick = onDelete,
+                tint = MaterialTheme.colorScheme.error,
+            )
+        }
+
+        Spacer(modifier = Modifier.height(20.dp))
+    }
+}
+
+@Composable
+private fun ActionRow(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    onClick: () -> Unit,
+    tint: Color = MaterialTheme.colorScheme.onSurface,
+) {
+    TextButton(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 10.dp),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = tint,
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+            Text(text = label, color = tint)
+        }
+    }
+    HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
+}
+
 // ─── Input Bar ────────────────────────────────────────────────────────────────
 
 @Composable
 private fun MessageInputBar(
     text: String,
     isSending: Boolean,
+    replyPreview: String?,
     onTextChange: (String) -> Unit,
     onSendClick: () -> Unit,
     onAttachClick: () -> Unit,
+    onClearReply: () -> Unit,
 ) {
     Surface(
         color = MaterialTheme.colorScheme.surface,
@@ -444,55 +659,98 @@ private fun MessageInputBar(
             .navigationBarsPadding()
             .imePadding(),
     ) {
-        Row(
+        Column(
             modifier = Modifier
                 .padding(horizontal = 8.dp, vertical = 6.dp)
                 .fillMaxWidth(),
-            verticalAlignment = Alignment.Bottom,
         ) {
-            IconButton(onClick = onAttachClick) {
-                Icon(Icons.Default.AttachFile, contentDescription = "Attach file")
+            replyPreview?.takeIf { it.isNotBlank() }?.let { preview ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f))
+                        .padding(horizontal = 10.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.Reply,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp),
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = preview,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.weight(1f),
+                        maxLines = 1,
+                    )
+                    IconButton(
+                        onClick = onClearReply,
+                        modifier = Modifier.size(22.dp),
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Close reply",
+                            modifier = Modifier.size(14.dp),
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(6.dp))
             }
 
-            TextField(
-                value = text,
-                onValueChange = onTextChange,
+            Row(
                 modifier = Modifier
-                    .weight(1f)
-                    .clip(RoundedCornerShape(24.dp)),
-                placeholder = { Text("Message…") },
-                maxLines = 6,
-                colors = TextFieldDefaults.colors(
-                    focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                    focusedIndicatorColor = Color.Transparent,
-                    unfocusedIndicatorColor = Color.Transparent,
-                ),
-            )
-
-            val canSend = text.isNotBlank() && !isSending
-            IconButton(
-                onClick = onSendClick,
-                enabled = canSend,
-                modifier = Modifier
-                    .clip(CircleShape)
-                    .background(
-                        if (canSend) MaterialTheme.colorScheme.tertiary
-                        else MaterialTheme.colorScheme.surfaceVariant
-                    ),
+                    .fillMaxWidth(),
+                verticalAlignment = Alignment.Bottom,
             ) {
-                if (isSending) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(20.dp),
-                        strokeWidth = 2.dp,
-                    )
-                } else {
-                    Icon(
-                        Icons.AutoMirrored.Filled.Send,
-                        contentDescription = "Send",
-                        tint = if (canSend) MaterialTheme.colorScheme.onTertiary
-                        else MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                IconButton(onClick = onAttachClick) {
+                    Icon(Icons.Default.AttachFile, contentDescription = "Attach file")
+                }
+
+                TextField(
+                    value = text,
+                    onValueChange = onTextChange,
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(24.dp)),
+                    placeholder = { Text("Message…") },
+                    maxLines = 6,
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                        focusedIndicatorColor = Color.Transparent,
+                        unfocusedIndicatorColor = Color.Transparent,
+                    ),
+                )
+
+                val canSend = text.isNotBlank() && !isSending
+                IconButton(
+                    onClick = onSendClick,
+                    enabled = canSend,
+                    modifier = Modifier
+                        .clip(CircleShape)
+                        .background(
+                            if (canSend) MaterialTheme.colorScheme.tertiary
+                            else MaterialTheme.colorScheme.surfaceVariant
+                        ),
+                ) {
+                    if (isSending) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(20.dp),
+                            strokeWidth = 2.dp,
+                        )
+                    } else {
+                        Icon(
+                            Icons.AutoMirrored.Filled.Send,
+                            contentDescription = "Send",
+                            tint = if (canSend) MaterialTheme.colorScheme.onTertiary
+                            else MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 }
             }
         }

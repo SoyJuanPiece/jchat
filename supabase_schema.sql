@@ -44,6 +44,8 @@ CREATE TABLE IF NOT EXISTS public.messages (
     content TEXT,
     content_type TEXT NOT NULL DEFAULT 'TEXT',
     media_url TEXT,
+    reply_to_message_id UUID REFERENCES public.messages(id) ON DELETE SET NULL,
+    reply_preview TEXT,
     status TEXT NOT NULL DEFAULT 'SENT',
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW(),

@@ -17,5 +17,23 @@ interface DatabaseDriverFactory {
  */
 fun createDatabase(driverFactory: DatabaseDriverFactory): JChatDatabase {
     val driver = driverFactory.createDriver()
-    return JChatDatabase(driver)
+    val database = JChatDatabase(driver)
+
+    // Backward-compatible hotfix for existing installs created before reply support.
+    runCatching {
+        driver.execute(
+            identifier = null,
+            sql = "ALTER TABLE messages ADD COLUMN reply_to_message_id TEXT",
+            parameters = 0,
+        )
+    }
+    runCatching {
+        driver.execute(
+            identifier = null,
+            sql = "ALTER TABLE messages ADD COLUMN reply_preview TEXT",
+            parameters = 0,
+        )
+    }
+
+    return database
 }

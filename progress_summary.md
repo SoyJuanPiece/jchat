@@ -4,7 +4,7 @@ Este documento registra el progreso, las decisiones clave y los próximos pasos 
 
 ## Última Actualización
 - Fecha: March 13, 2026
-- Estado: UX tipo mensajería + capa de fiabilidad avanzada (reintentos de envío y sincronización de lectura en tiempo real).
+- Estado: Flujo de conversación avanzado con respuestas citadas, acciones por mensaje y migración remota aplicada en Supabase.
 
 ---
 
@@ -83,6 +83,23 @@ Este documento registra el progreso, las decisiones clave y los próximos pasos 
 #### 6.3 Realtime de Actualizaciones
 *   **Cambio:** Añadido stream de eventos `UPDATE` de mensajes en Realtime para reflejar cambios de estado (incluyendo lecturas) en vivo.
 *   **Cambio:** Persistencia local automática de updates remotos para mantener UI y cache alineados.
+
+### Etapa 7: Conversación Avanzada Tipo App Top (Completada)
+
+#### 7.1 Replies y Acciones por Mensaje
+*   **Cambio:** Implementado `swipe-to-reply` para responder rápido desde cualquier burbuja.
+*   **Cambio:** Implementado menú de acciones por long-press: Reply, Copy, Retry (si falló) y Delete (mensajes propios).
+*   **Cambio:** Input con preview de respuesta citada y opción de cancelar antes de enviar.
+*   **Cambio:** Renderizado visual de mensajes que responden a otro mensaje (bloque de cita).
+
+#### 7.2 Dominio y Persistencia
+*   **Cambio:** Modelo `Message` ampliado con `replyToMessageId` y `replyPreview`.
+*   **Cambio:** SQLDelight actualizado con columnas locales para replies y compatibilidad con instalaciones previas.
+*   **Cambio:** Repositorio actualizado para enviar y reintentar mensajes preservando metadata de reply.
+
+#### 7.3 Supabase Remoto
+*   **Cambio:** Nueva migración aplicada: `20260313141651_add_message_reply_fields.sql`.
+*   **Cambio:** Base remota sincronizada con columnas `reply_to_message_id` y `reply_preview`.
 
 ---
 

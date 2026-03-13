@@ -22,6 +22,8 @@ CREATE TABLE IF NOT EXISTS messages (
     content_type TEXT NOT NULL DEFAULT 'text',
     media_url TEXT,
     media_local_path TEXT,
+    reply_to_message_id TEXT,
+    reply_preview TEXT,
     status TEXT NOT NULL DEFAULT 'sending',
     created_at INTEGER NOT NULL,
     updated_at INTEGER NOT NULL,
@@ -99,11 +101,13 @@ INSERT OR IGNORE INTO messages (
     content_type,
     media_url,
     media_local_path,
+    reply_to_message_id,
+    reply_preview,
     status,
     created_at,
     updated_at,
     is_deleted
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0);
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0);
 
 upsertMessage:
 INSERT OR REPLACE INTO messages (
@@ -114,11 +118,13 @@ INSERT OR REPLACE INTO messages (
     content_type,
     media_url,
     media_local_path,
+    reply_to_message_id,
+    reply_preview,
     status,
     created_at,
     updated_at,
     is_deleted
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0);
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0);
 
 getMessagesByChatId:
 SELECT * FROM messages

@@ -60,7 +60,12 @@ interface IChatRepository {
      * 3. Update local status to [com.jchat.domain.model.MessageStatus.SENT] on success,
      *    or [com.jchat.domain.model.MessageStatus.FAILED] on error.
      */
-    suspend fun sendTextMessage(chatId: String, content: String)
+    suspend fun sendTextMessage(
+        chatId: String,
+        content: String,
+        replyToMessageId: String? = null,
+        replyPreview: String? = null,
+    )
 
     /**
      * Uploads [mediaLocalPath] to Supabase Storage and then sends a message with the
