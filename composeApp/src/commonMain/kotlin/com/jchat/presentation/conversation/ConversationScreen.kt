@@ -41,6 +41,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -100,6 +101,11 @@ fun ConversationScreen(
     Scaffold(
         topBar = {
             TopAppBar(
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
+                ),
                 title = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         AsyncImage(
@@ -120,7 +126,7 @@ fun ConversationScreen(
                             Text(
                                 text = if (state.isTyping) "typing..." else state.participantStatus,
                                 style = MaterialTheme.typography.labelSmall,
-                                color = if (state.isTyping) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                color = if (state.isTyping) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f),
                             )
                         }
                     }
@@ -243,14 +249,14 @@ private fun MessageBubble(
 ) {
     val alignment = if (isFromCurrentUser) Alignment.CenterEnd else Alignment.CenterStart
     val bubbleColor = if (isFromCurrentUser) {
-        MaterialTheme.colorScheme.primary
+        SentBubbleColor
     } else {
-        MaterialTheme.colorScheme.secondaryContainer
+        ReceivedBubbleColor
     }
     val contentColor = if (isFromCurrentUser) {
-        MaterialTheme.colorScheme.onPrimary
+        SentBubbleContentColor
     } else {
-        MaterialTheme.colorScheme.onSecondaryContainer
+        ReceivedBubbleContentColor
     }
     val shape = bubbleShape(
         isFromCurrentUser = isFromCurrentUser,
@@ -411,7 +417,8 @@ private fun MessageInputBar(
     onAttachClick: () -> Unit,
 ) {
     Surface(
-        tonalElevation = 3.dp,
+        color = MaterialTheme.colorScheme.surface,
+        tonalElevation = 1.dp,
         modifier = Modifier
             .fillMaxWidth()
             .navigationBarsPadding()
@@ -436,6 +443,8 @@ private fun MessageInputBar(
                 placeholder = { Text("Message…") },
                 maxLines = 6,
                 colors = TextFieldDefaults.colors(
+                    focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
                     focusedIndicatorColor = Color.Transparent,
                     unfocusedIndicatorColor = Color.Transparent,
                 ),
@@ -448,7 +457,7 @@ private fun MessageInputBar(
                 modifier = Modifier
                     .clip(CircleShape)
                     .background(
-                        if (canSend) MaterialTheme.colorScheme.primary
+                        if (canSend) MaterialTheme.colorScheme.tertiary
                         else MaterialTheme.colorScheme.surfaceVariant
                     ),
             ) {
@@ -461,7 +470,7 @@ private fun MessageInputBar(
                     Icon(
                         Icons.AutoMirrored.Filled.Send,
                         contentDescription = "Send",
-                        tint = if (canSend) MaterialTheme.colorScheme.onPrimary
+                        tint = if (canSend) MaterialTheme.colorScheme.onTertiary
                         else MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
@@ -494,6 +503,10 @@ private sealed interface ConversationListItem {
 
 private const val MessageGroupWindowMs = 5 * 60 * 1000L
 private val ReadReceiptColor = Color(0xFF1EA7FD)
+private val SentBubbleColor = Color(0xFFDCF8C6)
+private val SentBubbleContentColor = Color(0xFF102A1F)
+private val ReceivedBubbleColor = Color(0xFFFFFFFF)
+private val ReceivedBubbleContentColor = Color(0xFF1A262B)
 
 private fun buildConversationItems(
     messages: List<Message>,

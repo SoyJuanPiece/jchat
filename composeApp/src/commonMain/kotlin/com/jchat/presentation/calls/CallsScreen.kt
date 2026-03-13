@@ -13,7 +13,16 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun CallsScreen() {
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Surface(
+            modifier = Modifier.padding(20.dp),
+            shape = MaterialTheme.shapes.large,
+            tonalElevation = 1.dp,
+            color = MaterialTheme.colorScheme.surface,
+        ) {
+            Column(
+                modifier = Modifier.padding(horizontal = 28.dp, vertical = 24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
             Icon(
                 Icons.Default.Call,
                 contentDescription = null,
@@ -32,6 +41,7 @@ fun CallsScreen() {
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
             )
+            }
         }
     }
 }

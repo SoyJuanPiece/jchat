@@ -4,7 +4,7 @@ Este documento registra el progreso, las decisiones clave y los próximos pasos 
 
 ## Última Actualización
 - Fecha: March 13, 2026
-- Estado: Integración total con **Supabase 3.0.2** + mejora visual premium de conversación + cierre de sesión robusto con limpieza local completa.
+- Estado: Refactor de diseño completo estilo mensajería moderna + setup de **Supabase CLI** con migración base versionada.
 
 ---
 
@@ -51,6 +51,24 @@ Este documento registra el progreso, las decisiones clave y los próximos pasos 
 *   **Cambio:** Cancelación de suscripciones realtime activas al cerrar sesión para evitar fugas y eventos fantasma.
 *   **Cambio:** Unificado flujo de cierre de sesión desde Home para usar repositorio y respetar la estrategia offline-first.
 
+### Etapa 5: Refactor Visual Integral + Migraciones Supabase (Completada)
+
+#### 5.1 Diseño y Consistencia de Producto
+*   **Cambio:** Creado tema visual global (`JChatTheme`) con paleta tipo mensajería (verdes, superficies limpias y contraste mejorado).
+*   **Cambio:** Refactorizadas pantallas clave (`Auth`, `Home`, `ChatList`, `Conversation`, `Calls`, `Updates`) para mantener un lenguaje visual coherente.
+*   **Cambio:** Home ahora usa cabecera branded, navegación inferior refinada y experiencia más cercana a apps de chat líderes.
+
+#### 5.2 Supabase CLI y Flujo de Migraciones
+*   **Cambio:** Inicializado proyecto Supabase CLI en el repo (`supabase init`).
+*   **Cambio:** Creada migración inicial `supabase/migrations/20260313134449_init_jchat_schema.sql` con:
+    *   tablas (`profiles`, `chats`, `chat_participants`, `messages`),
+    *   índices,
+    *   políticas RLS,
+    *   triggers,
+    *   publicación realtime,
+    *   configuración de bucket `chat-media`.
+*   **Cambio:** Añadida guía operativa en `supabase/README.md` para link + `db push`.
+
 ---
 
 ## Próximos Pasos (Bloque Consolidado)
@@ -63,5 +81,7 @@ Este documento registra el progreso, las decisiones clave y los próximos pasos 
 3.  **Calidad de Producto:**
     *   Añadir tests de integración para flujo auth -> chat -> sign out (incluyendo limpieza local).
     *   Automatizar validación en GitHub Actions para SQLDelight + navegación base.
+4.  **Operación Supabase:**
+    *   Ejecutar `supabase link --project-ref ... --password ...` y `supabase db push` desde credenciales reales del proyecto.
 
 ---
