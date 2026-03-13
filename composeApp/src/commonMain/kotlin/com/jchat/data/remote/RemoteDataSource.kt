@@ -130,35 +130,52 @@ class RemoteDataSource(private val supabase: SupabaseClient) {
         }
     }
 
-    suspend fun searchUser(username: String): ProfileDto? {
+    suspend fun searchUser(username: String, excludeUserId: String? = null): ProfileDto? {
         val normalized = username.trim().removePrefix("@").trim()
         if (normalized.isBlank()) return null
 
-        val exactMatch = supabase.from("profiles")
-            .select {
-                filter { ilike("username", normalized) }
-                limit(1)
-            }
-            .decodeList<ProfileDto>()
-            .firstOrNull()
-        if (exactMatch != null) return exactMatch
-
+        val query = normalized.lowercase()
         val partialPattern = "%$normalized%"
-        val partialUsername = supabase.from("profiles")
-            .select {
-                filter { ilike("username", partialPattern) }
-                limit(1)
-            }
-            .decodeList<ProfileDto>()
-            .firstOrNull()
-        if (partialUsername != null) return partialUsername
 
-        return supabase.from("profiles")
+        val usernameCandidates = supabase.from("profiles")
             .select {
-                filter { ilike("display_name", partialPattern) }
-                limit(1)
+                filter {
+                    ilike("username", partialPattern)
+                    if (!excludeUserId.isNullOrBlank()) neq("id", excludeUserId)
+                }
+                limit(10)
             }
             .decodeList<ProfileDto>()
+
+        val displayNameCandidates = supabase.from("profiles")
+            .select {
+                filter {
+                    ilike("display_name", partialPattern)
+                    if (!excludeUserId.isNullOrBlank()) neq("id", excludeUserId)
+                }
+                limit(10)
+            }
+            .decodeList<ProfileDto>()
+
+        fun score(profile: ProfileDto): Int {
+            val usernameValue = profile.username.lowercase()
+            val displayNameValue = profile.displayName.lowercase()
+            return when {
+                usernameValue == query -> 0
+                usernameValue.startsWith(query) -> 1
+                displayNameValue.startsWith(query) -> 2
+                usernameValue.contains(query) -> 3
+                displayNameValue.contains(query) -> 4
+                else -> 5
+            }
+        }
+
+        return (usernameCandidates + displayNameCandidates)
+            .distinctBy { it.id }
+            .sortedWith(
+                compareBy<ProfileDto> { score(it) }
+                    .thenBy { it.username.lowercase() }
+            )
             .firstOrNull()
     }
 
@@ -167,18 +184,21 @@ class RemoteDataSource(private val supabase: SupabaseClient) {
         val chatResponse = supabase.from("chats").insert(buildJsonObject {}) { select() }.decodeSingle<JsonElement>()
         val chatId = chatResponse.jsonObject["id"]?.jsonPrimitive?.content ?: error("Failed to create chat")
 
-        // 2. Add participants
-        val participants = listOf(
-            buildJsonObject { 
+        // 2. Add current user first, then target user.
+        // This order is RLS-safe because the second insert checks that requester is already a member.
+        supabase.from("chat_participants").insert(
+            buildJsonObject {
                 put("chat_id", chatId)
                 put("profile_id", myId)
-            },
-            buildJsonObject { 
+            }
+        )
+
+        supabase.from("chat_participants").insert(
+            buildJsonObject {
                 put("chat_id", chatId)
                 put("profile_id", targetId)
             }
         )
-        supabase.from("chat_participants").insert(participants)
         
         return chatId
     }

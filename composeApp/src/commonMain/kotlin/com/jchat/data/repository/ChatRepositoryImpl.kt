@@ -84,10 +84,18 @@ class ChatRepositoryImpl(
         val query = username.trim().removePrefix("@").trim()
         if (query.isBlank()) error("Ingresa un usuario valido")
 
-        val targetUser = remote.searchUser(query) ?: error("No encontramos a '$query'. Verifica username o display name.")
+        val targetUser = remote.searchUser(query, excludeUserId = myId)
+            ?: error("No encontramos a '$query'. Verifica username o display name.")
         if (targetUser.id == myId) error("No puedes iniciar un chat contigo mismo")
-        
-        val chatId = remote.createChat(myId, targetUser.id)
+
+        val chatId = runCatching {
+            remote.createChat(myId, targetUser.id)
+        }.getOrElse { cause ->
+            throw IllegalStateException(
+                "Encontramos al usuario, pero no pudimos crear el chat. Intenta de nuevo.",
+                cause,
+            )
+        }
         
         // Optimistically insert into local DB
         local.upsertProfile(targetUser.toDomain())
