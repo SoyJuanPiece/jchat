@@ -130,7 +130,7 @@ fun ConversationScreen(
                     isSending = state.isSending,
                     onTextChange = { viewModel.onIntent(ConversationIntent.UpdateInput(it)) },
                     onSendClick = { viewModel.onIntent(ConversationIntent.SendTextMessage) },
-                    onAttachClick = { viewModel.onIntent(ConversationIntent.SendMockImage) },
+                    onAttachClick = { /* TODO: Open file picker */ },
                 )
             }
         },
